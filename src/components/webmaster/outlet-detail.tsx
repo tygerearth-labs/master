@@ -35,10 +35,10 @@ export function OutletDetailView({
   const fetchOutlet = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/webmaster/Outlet/${outletId}`)
+      const res = await fetch(`/api/webmaster/outlets/${outletId}`)
       if (res.ok) {
         const json = await res.json()
-        setOutlet(json.data)
+        setOutlet(json)
       }
     } catch {
       // silent
