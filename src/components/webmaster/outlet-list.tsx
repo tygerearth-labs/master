@@ -63,10 +63,10 @@ export function OutletListView({
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
       if (search) params.set('search', search)
-      const res = await fetch(`/api/webmaster/Outlet?${params}`)
+      const res = await fetch(`/api/webmaster/outlets?${params}`)
       if (res.ok) {
         const json = await res.json()
-        setOutlets(json.data || [])
+        setOutlets(json.records || [])
         setTotal(json.total || 0)
         setTotalPages(json.totalPages || 1)
       }
@@ -104,13 +104,13 @@ export function OutletListView({
         accountType: formValues.accountType || 'free',
       }
       if (editRecord) {
-        const res = await fetch(`/api/webmaster/Outlet/${editRecord.id}`, {
+        const res = await fetch(`/api/webmaster/outlets/${editRecord.id}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         })
         if (res.ok) { toast.success('Outlet berhasil diperbarui'); setDialogOpen(false); fetchOutlets(); onRefreshSidebar() }
         else { const e = await res.json(); toast.error(e.error || 'Gagal') }
       } else {
-        const res = await fetch('/api/webmaster/Outlet', {
+        const res = await fetch('/api/webmaster/outlets', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         })
         if (res.ok) { toast.success('Outlet berhasil dibuat'); setDialogOpen(false); fetchOutlets(); onRefreshSidebar() }
@@ -122,7 +122,7 @@ export function OutletListView({
   const handleDelete = async () => {
     if (!deleteRecord) return
     try {
-      const res = await fetch(`/api/webmaster/Outlet/${deleteRecord.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/webmaster/outlets/${deleteRecord.id}`, { method: 'DELETE' })
       if (res.ok) { toast.success('Outlet berhasil dihapus'); setDeleteRecord(null); fetchOutlets(); onRefreshSidebar() }
       else { const e = await res.json(); toast.error(e.error || 'Gagal menghapus') }
     } catch { toast.error('Terjadi kesalahan') }

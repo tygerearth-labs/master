@@ -19,10 +19,10 @@ export default function WebmasterApp() {
   const fetchSidebarOutlets = useCallback(async () => {
     setSidebarLoading(true)
     try {
-      const res = await fetch('/api/webmaster/Outlet?limit=100')
+      const res = await fetch('/api/webmaster/outlets?limit=100')
       if (res.ok) {
         const json = await res.json()
-        setSidebarOutlets((json.data || []).map((r: Record<string, unknown>) => ({
+        setSidebarOutlets((json.records || []).map((r: Record<string, unknown>) => ({
           id: r.id as string,
           name: r.name as string,
           address: (r.address as string) || undefined,

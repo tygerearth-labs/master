@@ -51,11 +51,10 @@ export function CrewTab({
   const fetchCrew = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/webmaster/User?limit=100&search=${encodeURIComponent(outletId)}`)
+      const res = await fetch(`/api/webmaster/crew?outletId=${encodeURIComponent(outletId)}`)
       if (res.ok) {
         const json = await res.json()
-        // Filter users belonging to this outlet
-        const users = (json.data || []).filter((u: Record<string, unknown>) => u.outletId === outletId) as unknown as CrewMember[]
+        const users = (json.records || []) as unknown as CrewMember[]
         setCrew(users)
       }
     } catch {
@@ -108,14 +107,14 @@ export function CrewTab({
       }
 
       if (editRecord) {
-        const res = await fetch(`/api/webmaster/User/${editRecord.id}`, {
+        const res = await fetch(`/api/webmaster/crew/${editRecord.id}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         })
         if (res.ok) { toast.success('Crew berhasil diperbarui'); setDialogOpen(false); fetchCrew() }
         else { const e = await res.json(); toast.error(e.error || 'Gagal') }
       } else {
         if (!formValues.password) { toast.error('Password wajib diisi untuk crew baru'); setSaving(false); return }
-        const res = await fetch('/api/webmaster/User', {
+        const res = await fetch('/api/webmaster/crew', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         })
         if (res.ok) { toast.success('Crew berhasil ditambahkan'); setDialogOpen(false); fetchCrew(); onRefresh() }
@@ -132,7 +131,7 @@ export function CrewTab({
       return
     }
     try {
-      const res = await fetch(`/api/webmaster/User/${deleteRecord.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/webmaster/crew/${deleteRecord.id}`, { method: 'DELETE' })
       if (res.ok) { toast.success('Crew berhasil dihapus'); setDeleteRecord(null); fetchCrew(); onRefresh() }
       else { const e = await res.json(); toast.error(e.error || 'Gagal') }
     } catch { toast.error('Terjadi kesalahan') }

@@ -38,12 +38,12 @@ export function AkunTab({
     setLoading(true)
     try {
       // Find the OWNER user for this outlet
-      const res = await fetch(`/api/webmaster/User?limit=100`)
+      const res = await fetch(`/api/webmaster/crew?outletId=${encodeURIComponent(outletId)}`)
       if (res.ok) {
         const json = await res.json()
-        const users = json.data || []
+        const users = json.records || []
         const ownerUser = users.find((u: Record<string, unknown>) =>
-          u.outletId === outletId && u.role === 'OWNER'
+          u.role === 'OWNER'
         )
         if (ownerUser) {
           setOwner(ownerUser)
@@ -63,7 +63,7 @@ export function AkunTab({
   const handleSavePlan = async () => {
     setSavingPlan(true)
     try {
-      const res = await fetch(`/api/webmaster/Outlet/${outletId}`, {
+      const res = await fetch(`/api/webmaster/outlets/${outletId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountType: plan }),
@@ -86,7 +86,7 @@ export function AkunTab({
         // Update existing owner
         const payload: Record<string, unknown> = { email: ownerEmail }
         if (ownerPassword) payload.password = ownerPassword
-        const res = await fetch(`/api/webmaster/User/${owner.id}`, {
+        const res = await fetch(`/api/webmaster/crew/${owner.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -101,7 +101,7 @@ export function AkunTab({
       } else {
         // Create owner
         if (!ownerPassword) { toast.error('Password wajib diisi untuk akun baru'); setSavingAkun(false); return }
-        const res = await fetch('/api/webmaster/User', {
+        const res = await fetch('/api/webmaster/crew', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

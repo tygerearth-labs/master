@@ -6,7 +6,7 @@
 
 echo "=== AetherPOS Webmaster Setup ==="
 
-# 1. Buat [model] directory yang diproteksi filesystem
+# 1. Buat [model] directory untuk generic CRUD routes
 echo "Creating [model] API routes..."
 mkdir -p "src/app/api/webmaster/[model]/[id]"
 
@@ -157,10 +157,13 @@ export async function DELETE(
 }
 ROUTESCRIPT
 
+echo ""
 echo "[model] API routes created successfully!"
 echo ""
 echo "Next steps:"
 echo "  1. Edit .env → set DATABASE_URL ke Neon PostgreSQL connection string kamu"
-echo "  2. npm install && npx prisma generate"
-echo "  3. npx prisma db push  (satu kali saja, AMAN - tidak reset data)"
-echo "  4. npm run dev"
+echo "     Format: postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require"
+echo "  2. npm install"
+echo "  3. npx prisma generate"
+echo "  4. npx prisma db push  (satu kali saja, AMAN - tidak reset data)"
+echo "  5. npm run dev"
