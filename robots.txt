@@ -1,0 +1,259 @@
+// ==================== AETHER POS WEBMASTER SCHEMA ====================
+// Full schema from https://github.com/tygerearth-labs/aetherpos
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== CORE MODELS ====================
+
+model Outlet {
+  id          String   @id @default(cuid())
+  name        String
+  address     String?
+  phone       String?
+  accountType String   @default("free") // free, pro, enterprise
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users             User[]
+  products          Product[]
+  customers         Customer[]
+  categories        Category[]
+  transactions      Transaction[]
+  auditLogs         AuditLog[]
+  setting           OutletSetting?
+  promos            Promo[]
+  crewPermissions   CrewPermission[]
+  productVariants   ProductVariant[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  password  String
+  role      String   @default("CREW") // OWNER, CREW
+  outletId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  outlet       Outlet        @relation(fields: [outletId], references: [id])
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+  crewPermission CrewPermission?
+
+  @@unique([email, outletId])
+}
+
+model Category {
+  id       String   @id @default(cuid())
+  name     String
+  color    String   @default("zinc")
+  outletId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  outlet   Outlet    @relation(fields: [outletId], references: [id])
+  products Product[]
+  promos   Promo[]
+
+  @@unique([name, outletId])
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  name           String
+  sku            String?
+  barcode        String?
+  hpp            Float    @default(0)
+  price          Float
+  bruto          Float    @default(0)
+  netto          Float    @default(0)
+  stock          Int      @default(0)
+  lowStockAlert  Int      @default(10)
+  unit           String   @default("pcs")
+  image          String?
+  categoryId     String?
+  outletId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  hasVariants    Boolean  @default(false)
+
+  outlet           Outlet             @relation(fields: [outletId], references: [id])
+  category         Category?          @relation(fields: [categoryId], references: [id])
+  transactionItems TransactionItem[]
+  variants         ProductVariant[]
+
+  @@unique([name, outletId])
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  name      String
+  sku       String?
+  barcode   String?
+  hpp       Float    @default(0)
+  price     Float
+  stock     Int      @default(0)
+  outletId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product          Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  outlet           Outlet             @relation(fields: [outletId], references: [id])
+  transactionItems TransactionItem[]
+
+  @@unique([name, productId])
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  name       String
+  whatsapp   String
+  totalSpend Float    @default(0)
+  points     Int      @default(0)
+  outletId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  outlet       Outlet       @relation(fields: [outletId], references: [id])
+  transactions Transaction[]
+  loyaltyLogs  LoyaltyLog[]
+
+  @@unique([whatsapp, outletId])
+}
+
+model Transaction {
+  id             String   @id @default(cuid())
+  invoiceNumber  String   @unique
+  subtotal       Float
+  discount       Float    @default(0)
+  pointsUsed     Int      @default(0)
+  taxAmount      Float    @default(0)
+  total          Float
+  paymentMethod  String   // CASH, QRIS, DEBIT
+  paidAmount     Float    @default(0)
+  change         Float    @default(0)
+  note           String?
+  outletId       String
+  customerId    String?
+  userId         String
+  createdAt      DateTime @default(now())
+
+  outlet       Outlet            @relation(fields: [outletId], references: [id])
+  customer     Customer?         @relation(fields: [customerId], references: [id])
+  user         User              @relation(fields: [userId], references: [id])
+  items        TransactionItem[]
+  loyaltyLogs  LoyaltyLog[]
+}
+
+model TransactionItem {
+  id             String  @id @default(cuid())
+  productId      String?
+  variantId      String?
+  productName    String
+  variantName    String?
+  price          Float
+  qty            Int
+  subtotal       Float
+  hpp            Float
+  transactionId  String
+
+  product     Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  transaction Transaction     @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model LoyaltyLog {
+  id             String   @id @default(cuid())
+  type           String   // EARN, REDEEM
+  points         Int
+  description    String
+  customerId     String
+  transactionId  String?
+  createdAt      DateTime @default(now())
+
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  transaction  Transaction? @relation(fields: [transactionId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // CREATE, RESTOCK, SALE, ADJUSTMENT, UPDATE
+  entityType String   // PRODUCT, STOCK, OUTLET, SETTINGS, TRANSACTION
+  entityId   String?
+  details    String?
+  outletId   String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  outlet Outlet @relation(fields: [outletId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model OutletSetting {
+  id                    String   @id @default(cuid())
+  outletId              String   @unique
+  paymentMethods        String   @default("CASH,QRIS")
+  loyaltyEnabled       Boolean  @default(true)
+  loyaltyPointsPerAmount Int    @default(10000)
+  loyaltyPointValue     Int     @default(100)
+  receiptBusinessName   String   @default("Aether POS")
+  receiptAddress        String   @default("")
+  receiptPhone          String   @default("")
+  receiptFooter         String   @default("Terima kasih atas kunjungan Anda!")
+  receiptLogo           String   @default("")
+  ppnEnabled            Boolean  @default(false)
+  ppnRate               Float    @default(11)
+  themePrimaryColor     String   @default("emerald")
+  telegramBotToken      String?
+  telegramChatId        String?
+  notifyOnTransaction   Boolean  @default(true)
+  notifyOnCustomer      Boolean  @default(true)
+  notifyDailyReport     Boolean  @default(true)
+  notifyWeeklyReport    Boolean  @default(false)
+  notifyMonthlyReport   Boolean  @default(true)
+  notifyOnInsight       Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  outlet Outlet @relation(fields: [outletId], references: [id])
+}
+
+model Promo {
+  id           String   @id @default(cuid())
+  name         String
+  type         String   // PERCENTAGE, NOMINAL, BUY_X_GET_DISCOUNT
+  value        Float
+  minPurchase  Float?
+  maxDiscount  Float?
+  active       Boolean  @default(true)
+  outletId     String
+  buyMinQty    Int      @default(0)
+  discountType String   @default("PERCENTAGE")
+  categoryId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  outlet   Outlet    @relation(fields: [outletId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+}
+
+model CrewPermission {
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  pages    String   @default("pos")
+  outletId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  outlet Outlet @relation(fields: [outletId], references: [id])
+}
