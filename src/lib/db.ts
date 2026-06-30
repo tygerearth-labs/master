@@ -7,17 +7,9 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  const databaseUrl = process.env.DATABASE_URL
-
-  // Use Neon adapter for optimal serverless connection pooling
-  if (databaseUrl && databaseUrl.startsWith('postgres')) {
-    const sql = neon(databaseUrl)
-    const adapter = new PrismaNeon(sql)
-    return new PrismaClient({ adapter })
-  }
-
-  // Fallback for local SQLite dev
-  return new PrismaClient()
+  const sql = neon(process.env.DATABASE_URL!)
+  const adapter = new PrismaNeon(sql)
+  return new PrismaClient({ adapter })
 }
 
 export const db = globalForPrisma.prisma ?? createPrismaClient()

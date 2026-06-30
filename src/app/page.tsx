@@ -161,8 +161,8 @@ function OverviewSection() {
   }
 
   const stats = data?.stats ?? { revenue: 0, transactions: 0, outlets: 0, users: 0 }
-  const recentTransfers = data?.recentTransfers ?? []
-  const recentTransactions = data?.recentTransactions ?? []
+  const recentTransfers = Array.isArray(data?.recentTransfers) ? data.recentTransfers : []
+  const recentTransactions = Array.isArray(data?.recentTransactions) ? data.recentTransactions : []
 
   const statCards = [
     {
@@ -319,11 +319,12 @@ function OverviewSection() {
 function PipelineSection() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
 
-  const { data: transfers, isLoading } = useQuery({
+  const { data: rawTransfers, isLoading } = useQuery({
     queryKey: ['pipeline', statusFilter],
     queryFn: () =>
       fetch(`/api/pipeline?status=${statusFilter}`).then((r) => r.json()),
   })
+  const transfers = Array.isArray(rawTransfers) ? rawTransfers : []
 
   const statuses = ['ALL', 'DRAFT', 'IN_TRANSIT', 'RECEIVED', 'CANCELLED']
 
@@ -365,7 +366,7 @@ function PipelineSection() {
             <TableBody>
               {isLoading ? (
                 <TableSkeleton rows={8} cols={7} />
-              ) : !transfers || transfers.length === 0 ? (
+              ) : transfers.length === 0 ? (
                 <TableRow className="border-zinc-800 hover:bg-transparent">
                   <TableCell colSpan={7} className="py-8 text-center text-sm text-zinc-500">
                     No transfers found
@@ -425,7 +426,7 @@ function TransactionsSection() {
     queryFn: () => fetch(`/api/transactions?${queryParams.toString()}`).then((r) => r.json()),
   })
 
-  const transactions = data?.transactions ?? []
+  const transactions = Array.isArray(data?.transactions) ? data.transactions : []
   const summary = data?.summary ?? { totalRevenue: 0, transactionCount: 0, avgTransaction: 0 }
 
   const filterButtons = [
@@ -604,15 +605,17 @@ interface OutletRow {
 }
 
 function OutletsSection() {
-  const { data: outlets, isLoading } = useQuery({
+  const { data: rawOutlets, isLoading } = useQuery({
     queryKey: ['outlets'],
     queryFn: () => fetch('/api/outlets').then((r) => r.json()),
   })
+  const outlets = Array.isArray(rawOutlets) ? rawOutlets : []
 
-  const { data: plans } = useQuery({
+  const { data: rawPlansA } = useQuery({
     queryKey: ['plans-list'],
     queryFn: () => fetch('/api/plans').then((r) => r.json()),
   })
+  const plans = Array.isArray(rawPlansA) ? rawPlansA : []
 
   const [planDialogOpen, setPlanDialogOpen] = useState(false)
   const [selectedOutlet, setSelectedOutlet] = useState<OutletRow | null>(null)
@@ -671,7 +674,7 @@ function OutletsSection() {
             <TableBody>
               {isLoading ? (
                 <TableSkeleton rows={6} cols={9} />
-              ) : !outlets || outlets.length === 0 ? (
+              ) : outlets.length === 0 ? (
                 <TableRow className="border-zinc-800 hover:bg-transparent">
                   <TableCell colSpan={9} className="py-8 text-center text-sm text-zinc-500">
                     No outlets found
@@ -745,7 +748,7 @@ function OutletsSection() {
                   <SelectValue placeholder="Select plan" />
                 </SelectTrigger>
                 <SelectContent className="border-zinc-800 bg-zinc-900">
-                  {(plans || []).map((p: Record<string, unknown>) => (
+                  {plans.map((p: Record<string, unknown>) => (
                     <SelectItem key={p.id as string} value={p.id as string}>
                       {p.name as string} — {formatCurrency(p.price as number)}/
                       {p.duration as number}mo
@@ -813,15 +816,17 @@ function UsersSection() {
   if (roleFilter !== 'ALL') queryParams.set('role', roleFilter)
   if (outletFilter) queryParams.set('outletId', outletFilter)
 
-  const { data: users, isLoading } = useQuery({
+  const { data: rawUsers, isLoading } = useQuery({
     queryKey: ['users', roleFilter, outletFilter],
     queryFn: () => fetch(`/api/users?${queryParams.toString()}`).then((r) => r.json()),
   })
+  const users = Array.isArray(rawUsers) ? rawUsers : []
 
-  const { data: outlets } = useQuery({
+  const { data: rawOutletsB } = useQuery({
     queryKey: ['outlets-list'],
     queryFn: () => fetch('/api/outlets').then((r) => r.json()),
   })
+  const outlets = Array.isArray(rawOutletsB) ? rawOutletsB : []
 
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
@@ -866,7 +871,7 @@ function UsersSection() {
           </SelectTrigger>
           <SelectContent className="border-zinc-800 bg-zinc-900">
             <SelectItem value="__all__">All Outlets</SelectItem>
-            {(outlets || []).map((o: Record<string, unknown>) => (
+            {outlets.map((o: Record<string, unknown>) => (
               <SelectItem key={o.id as string} value={o.id as string}>
                 {o.name as string}
               </SelectItem>
@@ -891,7 +896,7 @@ function UsersSection() {
             <TableBody>
               {isLoading ? (
                 <TableSkeleton rows={8} cols={6} />
-              ) : !users || users.length === 0 ? (
+              ) : users.length === 0 ? (
                 <TableRow className="border-zinc-800 hover:bg-transparent">
                   <TableCell colSpan={6} className="py-8 text-center text-sm text-zinc-500">
                     No users found
@@ -996,10 +1001,11 @@ interface PlanRow {
 }
 
 function PlansSection() {
-  const { data: plans, isLoading } = useQuery({
+  const { data: rawPlans, isLoading } = useQuery({
     queryKey: ['plans'],
     queryFn: () => fetch('/api/plans').then((r) => r.json()),
   })
+  const plans = Array.isArray(rawPlans) ? rawPlans : []
 
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -1127,7 +1133,7 @@ function PlansSection() {
             <TableBody>
               {isLoading ? (
                 <TableSkeleton rows={5} cols={8} />
-              ) : !plans || plans.length === 0 ? (
+              ) : plans.length === 0 ? (
                 <TableRow className="border-zinc-800 hover:bg-transparent">
                   <TableCell colSpan={8} className="py-8 text-center text-sm text-zinc-500">
                     No plans found
