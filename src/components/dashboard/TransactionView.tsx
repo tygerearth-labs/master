@@ -90,7 +90,7 @@ export function TransactionView() {
 
       const params = new URLSearchParams({
         page: String(page),
-        limit: '10',
+        limit: '20',
         ...(search && { search }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate }),

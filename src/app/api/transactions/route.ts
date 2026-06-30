@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
-  const limit = Math.max(1, Math.min(100, Number(searchParams.get('limit')) || 10))
+  const limit = Math.max(1, Math.min(100, Number(searchParams.get('limit')) || 20))
   const search = searchParams.get('search') || ''
   const outletId = searchParams.get('outletId') || undefined
   const ownerId = searchParams.get('ownerId') || undefined

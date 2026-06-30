@@ -25,27 +25,17 @@ export async function GET(request: Request) {
         },
         _count: {
           select: {
-            branches: { where: { isActive: true } },
-            outlets: true,
+            branches: true,
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    // Count crew through outlets
-    const crewCounts = await db.crew.groupBy({
-      by: ['outletId'],
-      _count: true,
-    })
-
-    // For simplicity, count crew per owner by looking at their outlets
-    const ownerCrewCounts: Record<string, number> = {}
+    // Count outlets and crew per owner
     const outletOwnerMap = await db.outlet.findMany({
-      include: { branch: { select: { ownerId: true } } },
       select: { id: true, branch: { select: { ownerId: true } } },
     })
-
     const ownerOutletIds: Record<string, string[]> = {}
     for (const o of outletOwnerMap) {
       const oid = o.branch.ownerId
@@ -53,34 +43,34 @@ export async function GET(request: Request) {
       ownerOutletIds[oid].push(o.id)
     }
 
-    const allCrewCounts = await db.crew.groupBy({
+    const crewCounts = await db.crew.groupBy({
       by: ['outletId'],
       _count: { id: true },
     })
-
     const outletCrewMap: Record<string, number> = {}
-    for (const c of allCrewCounts) {
+    for (const c of crewCounts) {
       outletCrewMap[c.outletId] = c._count.id
     }
 
-    for (const [oid, outletIds] of Object.entries(ownerOutletIds)) {
-      ownerCrewCounts[oid] = outletIds.reduce((sum, oId) => sum + (outletCrewMap[oId] || 0), 0)
-    }
-
-    return NextResponse.json(
-      owners.map((o) => ({
+    const result = owners.map((o) => {
+      const oIds = ownerOutletIds[o.id] || []
+      const crewCount = oIds.reduce((sum, oId) => sum + (outletCrewMap[oId] || 0), 0)
+      return {
         id: o.id,
         name: o.name,
         email: o.email,
         phone: o.phone,
         planName: o.subscriptions[0]?.plan?.name || null,
         subscriptionStatus: o.subscriptions[0]?.status || null,
-        outletsCount: o._count.outlets,
-        crewCount: ownerCrewCounts[o.id] || 0,
+        branchCount: o._count.branches,
+        outletsCount: oIds.length,
+        crewCount,
         isActive: o.isActive,
         createdAt: o.createdAt.toISOString(),
-      }))
-    )
+      }
+    })
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Owners API error:', error)
     return NextResponse.json({ error: 'Failed to load owners' }, { status: 500 })
