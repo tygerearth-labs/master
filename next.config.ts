@@ -1,24 +1,17 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  reactStrictMode: false,
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          {
-            key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' https://vercel-scripts.*; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.neon.tech",
-          },
-        ],
-      },
-    ];
-  },
-};
+  headers: async () => [
+    {
+      source: '/(.*)',
+      headers: [
+        {
+          key: 'Content-Security-Policy',
+          value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; connect-src 'self' https://*.neon.tech wss://*.neon.tech; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:;",
+        },
+      ],
+    },
+  ],
+}
 
-export default nextConfig;
+export default nextConfig
