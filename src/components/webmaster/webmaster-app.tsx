@@ -4,13 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { SidebarNav } from './sidebar-nav'
 import { OutletListView } from './outlet-list'
 import { OutletDetailView } from './outlet-detail'
-import { EnterpriseView } from './enterprise-view'
 import { PlanSettingsView } from './plan-settings'
 
 export type ViewState =
   | { type: 'list' }
   | { type: 'detail'; outletId: string }
-  | { type: 'enterprise' }
   | { type: 'plans' }
 
 export default function WebmasterApp() {
@@ -18,7 +16,6 @@ export default function WebmasterApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarOutlets, setSidebarOutlets] = useState<{ id: string; name: string; address?: string }[]>([])
   const [outletCount, setOutletCount] = useState(0)
-  const [enterpriseGroupCount, setEnterpriseGroupCount] = useState(0)
   const [sidebarLoading, setSidebarLoading] = useState(true)
 
   const fetchSidebarOutlets = useCallback(async () => {
@@ -33,11 +30,6 @@ export default function WebmasterApp() {
           address: (r.address as string) || undefined,
         })))
         setOutletCount(json.total || 0)
-      }
-      const groupRes = await fetch('/api/webmaster/enterprise-groups')
-      if (groupRes.ok) {
-        const groupJson = await groupRes.json()
-        setEnterpriseGroupCount(groupJson.summary?.totalGroups || 0)
       }
     } catch {
       // silent
@@ -55,7 +47,6 @@ export default function WebmasterApp() {
   }, [fetchSidebarOutlets])
 
   const viewLabel = view.type === 'list' ? 'Outlet'
-    : view.type === 'enterprise' ? 'Enterprise'
     : view.type === 'plans' ? 'Plan & Pricing'
     : 'Detail Outlet'
 
@@ -66,7 +57,6 @@ export default function WebmasterApp() {
         onNavigate={setView}
         outlets={sidebarOutlets}
         outletCount={outletCount}
-        enterpriseGroupCount={enterpriseGroupCount}
         loading={sidebarLoading}
         open={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -93,8 +83,6 @@ export default function WebmasterApp() {
               onBack={() => setView({ type: 'list' })}
               onRefreshSidebar={refreshSidebar}
             />
-          ) : view.type === 'enterprise' ? (
-            <EnterpriseView />
           ) : view.type === 'plans' ? (
             <PlanSettingsView />
           ) : (

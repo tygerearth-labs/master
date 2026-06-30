@@ -1,6 +1,6 @@
 'use client'
 
-import { Store, Database, X, Building2, Tag } from 'lucide-react'
+import { Store, Database, X, Tag } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { ViewState } from './webmaster-app'
@@ -10,7 +10,6 @@ export function SidebarNav({
   onNavigate,
   outlets,
   outletCount,
-  enterpriseGroupCount,
   loading,
   open,
   onToggle,
@@ -19,7 +18,6 @@ export function SidebarNav({
   onNavigate: (view: ViewState) => void
   outlets: { id: string; name: string; address?: string }[]
   outletCount: number
-  enterpriseGroupCount: number
   loading: boolean
   open: boolean
   onToggle: () => void
@@ -64,24 +62,6 @@ export function SidebarNav({
             <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
               {outletCount}
             </span>
-          </button>
-
-          <button
-            onClick={() => { onNavigate({ type: 'enterprise' }); onToggle() }}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-              currentView.type === 'enterprise'
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            )}
-          >
-            <Building2 className="h-4 w-4" />
-            <span className="flex-1 text-left">Enterprise</span>
-            {enterpriseGroupCount > 0 && (
-              <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                {enterpriseGroupCount}
-              </span>
-            )}
           </button>
 
           <button
