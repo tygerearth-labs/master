@@ -1,41 +1,25 @@
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   try {
     const plans = await db.plan.findMany({
-      orderBy: { createdAt: 'asc' },
+      orderBy: { sortOrder: 'asc' },
     })
     return NextResponse.json(plans)
   } catch (error) {
     console.error('Plans API error:', error)
-    return NextResponse.json({ error: 'Failed to load plans' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, price, durationDays, maxOutlets, maxCrew, features, isActive } = body
-
-    if (!name || price == null || !durationDays) {
-      return NextResponse.json({ error: 'Name, price, and duration are required' }, { status: 400 })
-    }
-
-    const plan = await db.plan.create({
-      data: {
-        name,
-        price: Number(price),
-        durationDays: Number(durationDays),
-        maxOutlets: Number(maxOutlets) || 0,
-        maxCrew: Number(maxCrew) || 0,
-        features: JSON.stringify(features || []),
-        isActive: isActive !== false,
-      },
-    })
+    const plan = await db.plan.create({ data: body })
     return NextResponse.json(plan, { status: 201 })
   } catch (error) {
-    console.error('Create plan error:', error)
-    return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 })
+    console.error('Plan create API error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

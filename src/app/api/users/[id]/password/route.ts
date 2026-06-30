@@ -8,15 +8,23 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    const { password } = body
 
-    const plan = await db.plan.update({
+    if (!password || password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      )
+    }
+
+    await db.user.update({
       where: { id },
-      data: body,
+      data: { password },
     })
 
-    return NextResponse.json(plan)
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Plan update API error:', error)
+    console.error('Password reset API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
