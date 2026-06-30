@@ -14,7 +14,7 @@ datasource db {
 model OutletGroup {
   id        String   @id @default(cuid())
   name      String                        // Business name: "RNB"
-  ownerId   String   @unique              // Main account owner (User id)
+  ownerId   String   @unique                   // Main account owner (User id)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -25,16 +25,16 @@ model OutletGroup {
 
 // ==================== OUTLET ====================
 model Outlet {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
   address      String?
   phone        String?
-  accountType  String    @default("free") // free, pro, enterprise
-  isMain       Boolean   @default(false)  // Main/headquarters outlet in the group
-  groupId      String?                     // Belongs to an outlet group (null = standalone)
-  planExpiresAt DateTime?                  // When the current paid plan expires (null = free/never expires)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  accountType  String   @default("free") // free, pro, enterprise
+  isMain       Boolean  @default(false)  // Main/headquarters outlet in the group
+  groupId      String?                      // Belongs to an outlet group (null = standalone)
+  planExpiresAt DateTime?                   // When the current paid plan expires (null = free/never expires)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   group            OutletGroup?       @relation(fields: [groupId], references: [id])
   users            User[]
@@ -355,6 +355,11 @@ model OutletTransfer {
   createdBy    User              @relation("TransferCreator", fields: [createdById], references: [id])
   receivedBy   User?             @relation("TransferReceiver", fields: [receivedById], references: [id])
   items        TransferItem[]
+
+  @@index([fromOutletId])
+  @@index([toOutletId])
+  @@index([groupId])
+  @@index([status])
 }
 
 // ==================== TRANSFER ITEM ====================
@@ -373,4 +378,6 @@ model TransferItem {
 
   transfer OutletTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
   outlet   Outlet          @relation(fields: [outletId], references: [id])
+
+  @@index([transferId])
 }
