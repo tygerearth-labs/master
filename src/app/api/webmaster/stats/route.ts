@@ -1,45 +1,43 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { MODEL_NAMES } from '@/lib/model-metadata'
-
-type PrismaModelKey = keyof typeof db
 
 /**
  * GET /api/webmaster/stats
- * Returns dashboard statistics — count of all models
  */
 export async function GET() {
   try {
-    // Run all count queries in parallel using Prisma transaction
-    const counts = await db.$transaction(
-      MODEL_NAMES.map((model) => {
-        const prismaModel = db[model as PrismaModelKey] as {
-          count: () => Promise<number>
-        }
-        return prismaModel.count()
-      })
-    )
+    const totalOutlets = await db.outlet.count()
+    const totalUsers = await db.user.count()
+    const totalProducts = await db.product.count()
+    const totalTransactions = await db.transaction.count()
+    const totalCustomers = await db.customer.count()
+    const totalGroups = await db.outletGroup.count()
+    const totalPlans = await db.plan.count()
 
-    // Build stats object
-    const stats: Record<string, number> = {}
-    MODEL_NAMES.forEach((model, index) => {
-      stats[model] = counts[index]
-    })
-
-    // Compute some derived stats
     const totalRevenue = await db.transaction.aggregate({
       _sum: { total: true },
     })
 
-    const totalCustomers = await db.customer.count()
+    // Count by plan
+    const freeCount = await db.outlet.count({ where: { accountType: 'free' } })
+    const proCount = await db.outlet.count({ where: { accountType: 'pro' } })
+    const enterpriseCount = await db.outlet.count({ where: { accountType: 'enterprise' } })
 
     return NextResponse.json({
-      stats,
+      stats: {
+        outlet: totalOutlets,
+        user: totalUsers,
+        product: totalProducts,
+        transaction: totalTransactions,
+        customer: totalCustomers,
+        outletGroup: totalGroups,
+        plan: totalPlans,
+      },
       derived: {
-        totalModels: MODEL_NAMES.length,
-        totalRecords: counts.reduce((sum, c) => sum + c, 0),
         totalRevenue: totalRevenue._sum.total || 0,
-        totalCustomers,
+        freeCount,
+        proCount,
+        enterpriseCount,
       },
     })
   } catch (error) {

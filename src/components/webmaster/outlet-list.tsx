@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Search, RefreshCw, ChevronLeft, ChevronRight, Store, Users, Receipt, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, RefreshCw, ChevronLeft, ChevronRight, Store, Eye, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -160,8 +160,8 @@ export function OutletListView({
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs">Nama Outlet</TableHead>
-                <TableHead className="text-xs hidden sm:table-cell">Alamat</TableHead>
-                <TableHead className="text-xs hidden md:table-cell">Telepon</TableHead>
+                <TableHead className="text-xs hidden sm:table-cell">Grup</TableHead>
+                <TableHead className="text-xs hidden md:table-cell">Alamat</TableHead>
                 <TableHead className="text-xs">Plan</TableHead>
                 <TableHead className="text-xs hidden lg:table-cell">Dibuat</TableHead>
                 <TableHead className="text-xs text-right">Aksi</TableHead>
@@ -191,13 +191,27 @@ export function OutletListView({
                         <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center flex-shrink-0">
                           <Store className="h-4 w-4 text-emerald-600" />
                         </div>
-                        <span className="font-medium text-sm">{String(outlet.name)}</span>
+                        <div className="min-w-0">
+                          <span className="font-medium text-sm">{String(outlet.name)}</span>
+                          {outlet.isMain && (
+                            <Badge variant="outline" className="text-[10px] ml-1.5 px-1 py-0">Pusat</Badge>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                      {outlet.group ? (
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="h-3.5 w-3.5 text-amber-500" />
+                          <span>{String((outlet.group as Record<string, unknown>).name)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/60">Standalone</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[200px] truncate">
                       {String(outlet.address || '-')}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm">{String(outlet.phone || '-')}</TableCell>
                     <TableCell>
                       <Badge variant={planVariant[String(outlet.accountType)] || 'default'}>
                         {planLabel[String(outlet.accountType)] || String(outlet.accountType)}

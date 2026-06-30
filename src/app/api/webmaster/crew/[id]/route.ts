@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 
 /**
  * PUT /api/webmaster/crew/[id]
- * Update crew member
  */
 export async function PUT(
   req: NextRequest,
@@ -23,7 +22,6 @@ export async function PUT(
 
 /**
  * DELETE /api/webmaster/crew/[id]
- * Delete crew member
  */
 export async function DELETE(
   _req: NextRequest,

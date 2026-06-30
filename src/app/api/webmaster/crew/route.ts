@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 
 /**
  * GET /api/webmaster/crew?outletId=xxx
- * List crew (users) for a specific outlet
  */
 export async function GET(req: NextRequest) {
   try {
@@ -29,7 +28,6 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/webmaster/crew
- * Create a new crew member
  */
 export async function POST(req: NextRequest) {
   try {

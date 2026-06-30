@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
     const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { address: { contains: search, mode: "insensitive" } },
+        { name: { contains: search } },
+        { address: { contains: search } },
       ];
     }
 
@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
         include: {
           _count: { select: { users: true } },
+          group: { select: { id: true, name: true } },
         },
       }),
       db.outlet.count(

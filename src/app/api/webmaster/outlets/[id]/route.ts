@@ -16,6 +16,7 @@ export async function GET(
       include: {
         users: true,
         setting: true,
+        group: { include: { outlets: true, owner: true } },
         _count: {
           select: { transactions: true, products: true, customers: true },
         },

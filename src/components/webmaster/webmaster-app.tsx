@@ -4,16 +4,21 @@ import { useState, useEffect, useCallback } from 'react'
 import { SidebarNav } from './sidebar-nav'
 import { OutletListView } from './outlet-list'
 import { OutletDetailView } from './outlet-detail'
+import { EnterpriseView } from './enterprise-view'
+import { PlanSettingsView } from './plan-settings'
 
 export type ViewState =
   | { type: 'list' }
   | { type: 'detail'; outletId: string }
+  | { type: 'enterprise' }
+  | { type: 'plans' }
 
 export default function WebmasterApp() {
   const [view, setView] = useState<ViewState>({ type: 'list' })
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarOutlets, setSidebarOutlets] = useState<{ id: string; name: string; address?: string }[]>([])
   const [outletCount, setOutletCount] = useState(0)
+  const [enterpriseGroupCount, setEnterpriseGroupCount] = useState(0)
   const [sidebarLoading, setSidebarLoading] = useState(true)
 
   const fetchSidebarOutlets = useCallback(async () => {
@@ -28,6 +33,11 @@ export default function WebmasterApp() {
           address: (r.address as string) || undefined,
         })))
         setOutletCount(json.total || 0)
+      }
+      const groupRes = await fetch('/api/webmaster/enterprise-groups')
+      if (groupRes.ok) {
+        const groupJson = await groupRes.json()
+        setEnterpriseGroupCount(groupJson.summary?.totalGroups || 0)
       }
     } catch {
       // silent
@@ -44,6 +54,11 @@ export default function WebmasterApp() {
     fetchSidebarOutlets()
   }, [fetchSidebarOutlets])
 
+  const viewLabel = view.type === 'list' ? 'Outlet'
+    : view.type === 'enterprise' ? 'Enterprise'
+    : view.type === 'plans' ? 'Plan & Pricing'
+    : 'Detail Outlet'
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <SidebarNav
@@ -51,6 +66,7 @@ export default function WebmasterApp() {
         onNavigate={setView}
         outlets={sidebarOutlets}
         outletCount={outletCount}
+        enterpriseGroupCount={enterpriseGroupCount}
         loading={sidebarLoading}
         open={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -67,9 +83,7 @@ export default function WebmasterApp() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="ml-3 font-semibold text-sm">
-            {view.type === 'list' ? 'Outlet' : 'Detail Outlet'}
-          </span>
+          <span className="ml-3 font-semibold text-sm">{viewLabel}</span>
         </div>
 
         <div className="p-4 lg:p-6">
@@ -79,6 +93,10 @@ export default function WebmasterApp() {
               onBack={() => setView({ type: 'list' })}
               onRefreshSidebar={refreshSidebar}
             />
+          ) : view.type === 'enterprise' ? (
+            <EnterpriseView />
+          ) : view.type === 'plans' ? (
+            <PlanSettingsView />
           ) : (
             <OutletListView
               onNavigate={setView}

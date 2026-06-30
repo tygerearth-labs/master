@@ -1,16 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
 /**
  * GET /api/webmaster/outlet/[id]/transactions-summary
- * Returns monthly transaction aggregation for an outlet
  */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const { id } = await params;
 
     const transactions = await db.transaction.findMany({
       where: { outletId: id },
@@ -24,10 +23,9 @@ export async function GET(
         paymentMethod: true,
         invoiceNumber: true,
       },
-      orderBy: { createdAt: 'desc' },
-    })
+      orderBy: { createdAt: "desc" },
+    });
 
-    // Aggregate by month
     const monthlyMap = new Map<string, {
       month: string
       label: string

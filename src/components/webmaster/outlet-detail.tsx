@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Store, Users, Receipt, CreditCard, MapPin, Phone, Calendar, Crown } from 'lucide-react'
+import { ArrowLeft, Store, Users, Receipt, CreditCard, MapPin, Phone, Calendar, Crown, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -69,6 +69,9 @@ export function OutletDetailView({
     )
   }
 
+  const group = outlet.group as Record<string, unknown> | null
+  const outletCount = (group?.outlets as unknown[])?.length || 0
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -91,7 +94,7 @@ export function OutletDetailView({
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center flex-shrink-0">
-              <Store className="h-5 w-5 text-emerald-600" />
+              <Phone className="h-5 w-5 text-emerald-600" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Telepon</p>
@@ -134,6 +137,52 @@ export function OutletDetailView({
         </Card>
       </div>
 
+      {/* Group info card for enterprise */}
+      {group && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center flex-shrink-0">
+              <Building2 className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Grup Enterprise</p>
+              <p className="text-sm font-medium truncate">{String(group.name)}</p>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              <Store className="h-3 w-3 mr-1" />
+              {outletCount} outlet
+            </Badge>
+            {outlet.isMain && (
+              <Badge className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                <Crown className="h-3 w-3 mr-1" />Outlet Pusat
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Plan expiration card */}
+      {outlet.planExpiresAt && (
+        <Card className={`border ${new Date(String(outlet.planExpiresAt)) < new Date() ? 'border-destructive/50 bg-destructive/5' : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20'}`}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${new Date(String(outlet.planExpiresAt)) < new Date() ? 'bg-destructive/10' : 'bg-emerald-100 dark:bg-emerald-950'}`}>
+              <Calendar className={`h-5 w-5 ${new Date(String(outlet.planExpiresAt)) < new Date() ? 'text-destructive' : 'text-emerald-600'}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Plan Berlaku Hingga</p>
+              <p className={`text-sm font-medium ${new Date(String(outlet.planExpiresAt)) < new Date() ? 'text-destructive' : ''}`}>
+                {formatDate(String(outlet.planExpiresAt))}
+              </p>
+            </div>
+            {new Date(String(outlet.planExpiresAt)) < new Date() ? (
+              <Badge variant="destructive" className="text-xs">Expired</Badge>
+            ) : (
+              <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Aktif</Badge>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="crew">
         <TabsList>
@@ -144,7 +193,7 @@ export function OutletDetailView({
             <Receipt className="h-4 w-4" /> Transaksi
           </TabsTrigger>
           <TabsTrigger value="akun" className="gap-1.5">
-            <CreditCard className="h-4 w-4" /> Akun
+            <CreditCard className="h-4 w-4" /> Akun & Plan
           </TabsTrigger>
         </TabsList>
 
