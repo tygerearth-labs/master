@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       db.user.findMany({
         where,
         include: {
-          outlet: { select: { id: true, name: true, accountType: true, planExpiresAt: true } },
+          outlet: { select: { id: true, name: true, accountType: true, planExpiresAt: true, groupId: true } },
           crewPermission: { select: { id: true, pages: true } },
         },
         orderBy: { createdAt: 'desc' },

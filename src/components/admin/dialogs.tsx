@@ -79,9 +79,12 @@ export function PlanChangeDialog({ outlet, selectedPlan, onPlanChange, applyToGr
             </Select>
           </div>
           {outlet?.groupId && (
-            <div className="flex items-center gap-2">
-              <Switch checked={applyToGroup} onCheckedChange={onApplyToGroup} id="apply-group-plan" />
-              <Label htmlFor="apply-group-plan" className="text-xs">Apply to all outlets in group</Label>
+            <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <Switch checked={applyToGroup} onCheckedChange={onApplyToGroup} id="apply-group-plan" disabled />
+                <Label htmlFor="apply-group-plan" className="text-xs text-emerald-400 font-medium">Apply to all outlets in group</Label>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Plan harus sama untuk outlet utama & cabang dalam 1 grup.</p>
             </div>
           )}
         </div>
@@ -135,9 +138,12 @@ export function DurationChangeDialog({ outlet, selectedDuration, onDurationChang
             </div>
           )}
           {outlet?.groupId && (
-            <div className="flex items-center gap-2">
-              <Switch checked={applyToGroup} onCheckedChange={onApplyToGroup} id="apply-group-dur" />
-              <Label htmlFor="apply-group-dur" className="text-xs">Apply to all outlets in group</Label>
+            <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <Switch checked={applyToGroup} onCheckedChange={onApplyToGroup} id="apply-group-dur" disabled />
+                <Label htmlFor="apply-group-dur" className="text-xs text-emerald-400 font-medium">Apply to all outlets in group</Label>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Durasi plan harus sama untuk outlet utama & cabang dalam 1 grup.</p>
             </div>
           )}
         </div>
@@ -211,10 +217,18 @@ export function SuspendUserDialog({ user, suspendGroup, onSuspendGroup, onConfir
           </AlertDialogDescription>
         </AlertDialogHeader>
         {isOwner && !isCurrentlySuspended && (
-          <div className="flex items-center gap-2">
-            <Switch checked={suspendGroup} onCheckedChange={onSuspendGroup} id="suspend-group" />
-            <Label htmlFor="suspend-group" className="text-xs">Suspend all outlets in group</Label>
-          </div>
+          (() => {
+            const hasGroup = !!(user.outlet as { groupId?: string | null }).groupId
+            return hasGroup ? (
+              <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Switch checked={suspendGroup} onCheckedChange={onSuspendGroup} id="suspend-group" />
+                  <Label htmlFor="suspend-group" className="text-xs text-red-400 font-medium">Suspend semua outlet dalam grup</Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Semua outlet dalam grup akan di-suspend bersamaan.</p>
+              </div>
+            ) : null
+          })()
         )}
         <AlertDialogFooter>
           <AlertDialogCancel className="text-xs">Cancel</AlertDialogCancel>

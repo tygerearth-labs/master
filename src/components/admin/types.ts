@@ -16,7 +16,7 @@ export interface Outlet {
 export interface User {
   id: string; name: string; email: string; role: string; active: boolean
   createdAt: string; updatedAt: string
-  outlet: { id: string; name: string; accountType: string; planExpiresAt: string | null }
+  outlet: { id: string; name: string; accountType: string; planExpiresAt: string | null; groupId: string | null }
   crewPermission?: CrewPermissionData | null
 }
 

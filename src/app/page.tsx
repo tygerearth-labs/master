@@ -711,7 +711,7 @@ export default function AdminDashboard() {
                   onSearch={(v) => { setSearchUser(v); setUserPage(1) }}
                   onPageChange={setUserPage}
                   onResetPw={(u) => { setResetPwUser(u); setNewPassword('') }}
-                  onSuspend={setSuspendUser}
+                  onSuspend={(u) => { setSuspendUser(u); setSuspendGroup(!!(u.outlet as { groupId?: string | null }).groupId) }}
                   onCreate={openUserCreate}
                   onEdit={openUserEdit}
                   onDelete={setDeleteUserDialog}
