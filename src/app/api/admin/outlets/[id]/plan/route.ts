@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { VALID_ACCOUNT_TYPES } from '@/lib/plan-config'
+import { getOutletAuditContext } from '@/lib/audit'
 
 // PUT /api/admin/outlets/[id]/plan — Change outlet plan
 export async function PUT(
@@ -58,17 +59,20 @@ export async function PUT(
       updatedOutlets.push(id)
     }
 
-    // Log the action with new AuditLog structure
-    await db.auditLog.create({
-      data: {
-        action: 'CHANGE_PLAN',
-        entityType: 'OUTLET',
-        entityId: id,
-        outletId: id,
-        details: JSON.stringify({ oldType, newType: accountType, applyToGroup: !!applyToGroup, updatedOutlets }),
-        performedBy: 'webmaster',
-      },
-    })
+    // Audit log
+    const auditCtx = await getOutletAuditContext(id)
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'CHANGE_PLAN',
+          entityType: 'OUTLET',
+          entityId: id,
+          outletId: id,
+          userId: auditCtx.userId,
+          details: JSON.stringify({ oldType, newType: accountType, applyToGroup: !!applyToGroup, updatedOutlets }),
+        },
+      })
+    }
 
     return NextResponse.json({
       success: true,

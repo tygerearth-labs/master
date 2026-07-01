@@ -37,7 +37,7 @@ export async function PUT(
       },
     })
 
-    // Audit log
+    // Audit log — use the user's own id and outletId
     await db.auditLog.create({
       data: {
         action: 'UPDATE_USER',
@@ -46,7 +46,6 @@ export async function PUT(
         userId: id,
         outletId: user.outletId,
         details: JSON.stringify({ updatedFields: Object.keys(data), values: data }),
-        performedBy: 'webmaster',
       },
     })
 
@@ -87,21 +86,27 @@ export async function DELETE(
       await db.crewPermission.delete({ where: { userId: id } })
     }
 
+    // Store user data for audit log before deletion
+    const userData = { name: user.name, email: user.email, role: user.role, outletId: user.outletId }
+
     // Delete the user
     await db.user.delete({ where: { id } })
 
-    // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'DELETE_USER',
-        entityType: 'USER',
-        entityId: id,
-        userId: id,
-        outletId: user.outletId,
-        details: JSON.stringify({ name: user.name, email: user.email, role: user.role }),
-        performedBy: 'webmaster',
-      },
-    })
+    // Audit log — we need a userId but the user is deleted. Use the system audit context.
+    const { getSystemAuditContext } = await import('@/lib/audit')
+    const auditCtx = await getSystemAuditContext()
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'DELETE_USER',
+          entityType: 'USER',
+          entityId: id,
+          userId: auditCtx.userId,
+          outletId: userData.outletId || auditCtx.outletId,
+          details: JSON.stringify({ name: userData.name, email: userData.email, role: userData.role }),
+        },
+      })
+    }
 
     return NextResponse.json({ success: true, message: 'User deleted successfully' })
   } catch (error) {

@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           outlet: { select: { id: true, name: true, accountType: true, planExpiresAt: true } },
+          crewPermission: { select: { id: true, pages: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -43,10 +44,15 @@ export async function GET(request: NextRequest) {
         name: u.name,
         email: u.email,
         role: u.role,
-        active: u.active,
+        // Derive "active" status: OWNER suspended if outlet accountType starts with "suspended:"
+        // CREW suspended if crewPermission.pages is empty string ""
+        active: u.role === 'OWNER'
+          ? !u.outlet.accountType.startsWith('suspended:')
+          : u.crewPermission ? u.crewPermission.pages !== '' : true,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
         outlet: u.outlet,
+        crewPermission: u.crewPermission,
       })),
       total,
       page,
@@ -121,7 +127,7 @@ export async function POST(request: NextRequest) {
       throw err
     }
 
-    // Audit log
+    // Audit log — use the new user's own id and outletId
     await db.auditLog.create({
       data: {
         action: 'CREATE_USER',
@@ -130,7 +136,6 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         outletId,
         details: JSON.stringify({ name: user.name, email: user.email, role: userRole }),
-        performedBy: 'webmaster',
       },
     })
 

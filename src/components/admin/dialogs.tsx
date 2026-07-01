@@ -190,8 +190,8 @@ export function SuspendUserDialog({ user, suspendGroup, onSuspendGroup, onConfir
 
   const isOwner = user.role === 'OWNER'
   const outletSuspended = isOwner && isSuspended(user.outlet.accountType)
-  const userSuspended = !user.active
-  const isCurrentlySuspended = isOwner ? outletSuspended : userSuspended
+  const crewSuspended = !isOwner && user.crewPermission?.pages === ''
+  const isCurrentlySuspended = outletSuspended || crewSuspended
 
   return (
     <AlertDialog open={!!user} onOpenChange={(open) => !open && onCancel()}>
@@ -237,7 +237,7 @@ export function ChangeOwnerDialog({ outlet, selectedNewOwnerId, onNewOwnerChange
   onConfirm: () => void; onCancel: () => void; loading: boolean
 }) {
   const currentOwner = outlet?.users.find(u => u.role === 'OWNER')
-  const candidates = outlet?.users.filter(u => u.role !== 'OWNER' && u.active) || []
+  const candidates = outlet?.users.filter(u => u.role !== 'OWNER') || []
 
   return (
     <Dialog open={!!outlet} onOpenChange={(open) => !open && onCancel()}>
@@ -485,7 +485,7 @@ export function OutletDetailDialog({
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {!u.active && <Badge variant="destructive" className="text-[8px] font-mono px-1">SUSPENDED</Badge>}
+                    {u.role === 'CREW' && u.crewPermission?.pages === '' && <Badge variant="destructive" className="text-[8px] font-mono px-1">SUSPENDED</Badge>}
                     <Badge variant={u.role === 'OWNER' ? 'default' : 'secondary'} className={`text-[9px] font-mono ${u.role === 'OWNER' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : ''}`}>{u.role}</Badge>
                     {onManagePermissions && u.role === 'CREW' && (
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-emerald-400" onClick={() => onManagePermissions({ ...u, outlet: { id: outlet.id, name: outlet.name, accountType: outlet.accountType, planExpiresAt: outlet.planExpiresAt } } as User)}>

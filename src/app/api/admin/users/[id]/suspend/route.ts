@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 
 // PUT /api/admin/users/[id]/suspend — Suspend or unsuspend a user
 // OWNER: prefixes the outlet's accountType with "suspended:"
-// CREW: sets the user's `active` field to false
+// CREW: revokes all crew permissions by setting pages to empty string ""
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -15,7 +15,10 @@ export async function PUT(
 
     const user = await db.user.findUnique({
       where: { id },
-      include: { outlet: { include: { group: { include: { outlets: true } } } } },
+      include: {
+        outlet: { include: { group: { include: { outlets: true } } } },
+        crewPermission: true,
+      },
     })
 
     if (!user) {
@@ -24,8 +27,26 @@ export async function PUT(
 
     // ==================== CREW SUSPEND ====================
     if (user.role !== 'OWNER') {
-      if (suspend && user.active) {
-        await db.user.update({ where: { id }, data: { active: false } })
+      // A CREW user is "active" if they have a crewPermission with non-empty pages
+      const isActive = user.crewPermission ? user.crewPermission.pages !== '' : true
+
+      if (suspend && isActive) {
+        // Suspend: set crewPermission pages to empty string
+        if (user.crewPermission) {
+          await db.crewPermission.update({
+            where: { userId: id },
+            data: { pages: '' },
+          })
+        } else {
+          // Create an empty permission record (suspended state)
+          await db.crewPermission.create({
+            data: {
+              userId: id,
+              outletId: user.outletId,
+              pages: '',
+            },
+          })
+        }
         await db.auditLog.create({
           data: {
             action: 'SUSPEND_USER',
@@ -34,12 +55,25 @@ export async function PUT(
             userId: id,
             outletId: user.outlet.id,
             details: JSON.stringify({ userName: user.name, userEmail: user.email, role: user.role }),
-            performedBy: 'webmaster',
           },
         })
         return NextResponse.json({ success: true, action: 'suspended', userId: id })
-      } else if (!suspend && !user.active) {
-        await db.user.update({ where: { id }, data: { active: true } })
+      } else if (!suspend && !isActive) {
+        // Unsuspend: restore crewPermission pages to "pos"
+        if (user.crewPermission) {
+          await db.crewPermission.update({
+            where: { userId: id },
+            data: { pages: 'pos' },
+          })
+        } else {
+          await db.crewPermission.create({
+            data: {
+              userId: id,
+              outletId: user.outletId,
+              pages: 'pos',
+            },
+          })
+        }
         await db.auditLog.create({
           data: {
             action: 'UNSUSPEND_USER',
@@ -48,7 +82,6 @@ export async function PUT(
             userId: id,
             outletId: user.outlet.id,
             details: JSON.stringify({ userName: user.name, userEmail: user.email, role: user.role }),
-            performedBy: 'webmaster',
           },
         })
         return NextResponse.json({ success: true, action: 'unsuspended', userId: id })
@@ -66,11 +99,11 @@ export async function PUT(
     const updatedOutlets: string[] = []
 
     if (suspend && !isCurrentlySuspended) {
-      // SUSPEND: Prefix accountType with "suspended:" + deactivate user
+      // SUSPEND: Prefix accountType with "suspended:"
       const suspendedType = `suspended:${outlet.accountType}`
 
       if (suspendGroup && outlet.groupId && outlet.group) {
-        // Suspend all outlets in the group + all owners
+        // Suspend all outlets in the group
         const groupOutletIds = outlet.group.outlets.map(o => o.id)
         await db.$transaction([
           ...groupOutletIds.map(oid =>
@@ -79,14 +112,10 @@ export async function PUT(
               data: { accountType: `suspended:${outlet.group!.outlets.find(o => o.id === oid)?.accountType || 'free'}` },
             })
           ),
-          db.user.update({ where: { id }, data: { active: false } }),
         ])
         updatedOutlets.push(...groupOutletIds)
       } else {
-        await db.$transaction([
-          db.outlet.update({ where: { id: outlet.id }, data: { accountType: suspendedType } }),
-          db.user.update({ where: { id }, data: { active: false } }),
-        ])
+        await db.outlet.update({ where: { id: outlet.id }, data: { accountType: suspendedType } })
         updatedOutlets.push(outlet.id)
       }
 
@@ -103,13 +132,12 @@ export async function PUT(
             suspendGroup: !!suspendGroup,
             updatedOutlets,
           }),
-          performedBy: 'webmaster',
         },
       })
 
       return NextResponse.json({ success: true, action: 'suspended', previousAccountType: outlet.accountType, updatedOutlets })
     } else if (!suspend && isCurrentlySuspended) {
-      // UNSUSPEND: Remove "suspended:" prefix + reactivate user
+      // UNSUSPEND: Remove "suspended:" prefix
       const originalType = outlet.accountType.replace('suspended:', '')
 
       if (suspendGroup && outlet.groupId && outlet.group) {
@@ -125,14 +153,10 @@ export async function PUT(
                 data: { accountType: o.accountType.replace('suspended:', '') },
               })
             ),
-          db.user.update({ where: { id }, data: { active: true } }),
         ])
         updatedOutlets.push(...groupOutletIds)
       } else {
-        await db.$transaction([
-          db.outlet.update({ where: { id: outlet.id }, data: { accountType: originalType } }),
-          db.user.update({ where: { id }, data: { active: true } }),
-        ])
+        await db.outlet.update({ where: { id: outlet.id }, data: { accountType: originalType } })
         updatedOutlets.push(outlet.id)
       }
 
@@ -149,7 +173,6 @@ export async function PUT(
             suspendGroup: !!suspendGroup,
             updatedOutlets,
           }),
-          performedBy: 'webmaster',
         },
       })
 

@@ -26,6 +26,10 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          outlet: { select: { id: true, name: true } },
+        },
       }),
       db.auditLog.count({ where }),
     ])

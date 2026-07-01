@@ -69,7 +69,7 @@ export async function PUT(
       },
     })
 
-    // Audit log
+    // Audit log — use the user's own id and outletId
     await db.auditLog.create({
       data: {
         action: 'UPDATE_PERMISSIONS',
@@ -78,7 +78,6 @@ export async function PUT(
         userId: id,
         outletId: user.outletId,
         details: JSON.stringify({ pages }),
-        performedBy: 'webmaster',
       },
     })
 

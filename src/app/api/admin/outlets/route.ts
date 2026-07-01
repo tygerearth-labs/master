@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getOutletAuditContext } from '@/lib/audit'
 
 // GET /api/admin/outlets — List all outlets with their owners
 export async function GET(request: NextRequest) {
@@ -33,7 +34,10 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           users: {
-            select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+            select: {
+              id: true, name: true, email: true, role: true, createdAt: true,
+              crewPermission: { select: { pages: true } },
+            },
           },
           group: { select: { id: true, name: true } },
         },
@@ -45,7 +49,17 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      outlets,
+      outlets: outlets.map(o => ({
+        ...o,
+        users: o.users.map(u => ({
+          ...u,
+          // Derive "active" status: OWNER suspended if outlet accountType starts with "suspended:"
+          // CREW suspended if crewPermission.pages is empty string
+          active: u.role === 'OWNER'
+            ? !o.accountType.startsWith('suspended:')
+            : u.crewPermission ? u.crewPermission.pages !== '' : true,
+        })),
+      })),
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -85,17 +99,20 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'CREATE_OUTLET',
-        entityType: 'OUTLET',
-        entityId: outlet.id,
-        outletId: outlet.id,
-        details: JSON.stringify({ name: outlet.name, accountType: outlet.accountType, isMain: outlet.isMain, groupId: outlet.groupId }),
-        performedBy: 'webmaster',
-      },
-    })
+    // Audit log — find a user for this outlet's context
+    const auditCtx = await getOutletAuditContext(outlet.id)
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'CREATE_OUTLET',
+          entityType: 'OUTLET',
+          entityId: outlet.id,
+          outletId: outlet.id,
+          userId: auditCtx.userId,
+          details: JSON.stringify({ name: outlet.name, accountType: outlet.accountType, isMain: outlet.isMain, groupId: outlet.groupId }),
+        },
+      })
+    }
 
     return NextResponse.json({ outlet }, { status: 201 })
   } catch (error) {

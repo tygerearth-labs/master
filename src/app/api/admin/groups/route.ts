@@ -64,15 +64,15 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Audit log
+    // Audit log — use the owner's id and outletId
     await db.auditLog.create({
       data: {
         action: 'CREATE_GROUP',
         entityType: 'OUTLET',
         entityId: group.id,
         outletId: owner.outletId,
+        userId: ownerId,
         details: JSON.stringify({ name: group.name, ownerId }),
-        performedBy: 'webmaster',
       },
     })
 

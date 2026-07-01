@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getOutletAuditContext } from '@/lib/audit'
 
 // Default outlet settings (returned when no OutletSetting exists)
 const DEFAULT_SETTINGS = {
@@ -101,16 +102,19 @@ export async function PUT(
     })
 
     // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'UPDATE_SETTINGS',
-        entityType: 'SETTINGS',
-        entityId: setting.id,
-        outletId: id,
-        details: JSON.stringify({ updatedFields: Object.keys(data) }),
-        performedBy: 'webmaster',
-      },
-    })
+    const auditCtx = await getOutletAuditContext(id)
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'UPDATE_SETTINGS',
+          entityType: 'SETTINGS',
+          entityId: setting.id,
+          outletId: id,
+          userId: auditCtx.userId,
+          details: JSON.stringify({ updatedFields: Object.keys(data) }),
+        },
+      })
+    }
 
     return NextResponse.json({ settings: setting })
   } catch (error) {

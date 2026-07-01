@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getSystemAuditContext } from '@/lib/audit'
 
 // GET /api/admin/plans/[id] — Get a single plan
 export async function GET(
@@ -65,15 +66,19 @@ export async function PUT(
     })
 
     // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'UPDATE_PLAN',
-        entityType: 'PLAN',
-        entityId: id,
-        details: JSON.stringify({ updatedFields: Object.keys(data), values: data }),
-        performedBy: 'webmaster',
-      },
-    })
+    const auditCtx = await getSystemAuditContext()
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'UPDATE_PLAN',
+          entityType: 'PLAN',
+          entityId: id,
+          outletId: auditCtx.outletId,
+          userId: auditCtx.userId,
+          details: JSON.stringify({ updatedFields: Object.keys(data), values: data }),
+        },
+      })
+    }
 
     return NextResponse.json({ plan })
   } catch (error) {
@@ -99,15 +104,19 @@ export async function DELETE(
     await db.plan.delete({ where: { id } })
 
     // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'DELETE_PLAN',
-        entityType: 'PLAN',
-        entityId: id,
-        details: JSON.stringify({ name: existing.name, slug: existing.slug }),
-        performedBy: 'webmaster',
-      },
-    })
+    const auditCtx = await getSystemAuditContext()
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'DELETE_PLAN',
+          entityType: 'PLAN',
+          entityId: id,
+          outletId: auditCtx.outletId,
+          userId: auditCtx.userId,
+          details: JSON.stringify({ name: existing.name, slug: existing.slug }),
+        },
+      })
+    }
 
     return NextResponse.json({ success: true, message: 'Plan deleted successfully' })
   } catch (error) {

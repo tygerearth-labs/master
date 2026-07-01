@@ -14,6 +14,9 @@ export async function GET() {
       expiringOutlets,
       plans,
       outletsWithSettings,
+      totalProducts,
+      totalCustomers,
+      totalTransactions,
     ] = await Promise.all([
       db.outlet.count(),
       db.user.count(),
@@ -40,6 +43,10 @@ export async function GET() {
       db.plan.findMany({ orderBy: { sortOrder: 'asc' } }),
       // Count outlets that have an OutletSetting
       db.outletSetting.count(),
+      // Real counts from actual data
+      db.product.count(),
+      db.customer.count(),
+      db.transaction.count(),
     ])
 
     const planBreakdown: Record<string, number> = {}
@@ -99,10 +106,10 @@ export async function GET() {
         createdAt: o.createdAt,
         owner: o.users[0] ? { id: o.users[0].id, name: o.users[0].name, email: o.users[0].email } : null,
       })),
-      // Additional stats
-      totalProducts: 0,       // No Product model yet
-      totalCustomers: 0,      // No Customer model yet
-      totalTransactions: 0,   // No Transaction model yet
+      // Real counts from actual models
+      totalProducts,
+      totalCustomers,
+      totalTransactions,
       outletsWithSettings,
     })
   } catch (error) {

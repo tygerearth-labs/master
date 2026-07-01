@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getSystemAuditContext } from '@/lib/audit'
 
 // GET /api/admin/plans — List all plans ordered by sortOrder
 export async function GET() {
@@ -51,16 +52,20 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'CREATE_PLAN',
-        entityType: 'PLAN',
-        entityId: plan.id,
-        details: JSON.stringify({ name: plan.name, slug: plan.slug, price: plan.price }),
-        performedBy: 'webmaster',
-      },
-    })
+    // Audit log — use system context since plan actions don't have a specific outlet/user
+    const auditCtx = await getSystemAuditContext()
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'CREATE_PLAN',
+          entityType: 'PLAN',
+          entityId: plan.id,
+          outletId: auditCtx.outletId,
+          userId: auditCtx.userId,
+          details: JSON.stringify({ name: plan.name, slug: plan.slug, price: plan.price }),
+        },
+      })
+    }
 
     return NextResponse.json({ plan }, { status: 201 })
   } catch (error) {

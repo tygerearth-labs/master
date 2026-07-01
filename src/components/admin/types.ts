@@ -2,6 +2,7 @@
 
 export interface OutletOwner {
   id: string; name: string; email: string; role: string; active: boolean; createdAt: string
+  crewPermission?: { pages: string } | null
 }
 
 export interface Outlet {
@@ -42,8 +43,10 @@ export interface Stats {
 
 export interface AuditLog {
   id: string; action: string; entityType: string; entityId: string | null
-  details: string | null; outletId: string | null; userId: string | null
-  performedBy: string; createdAt: string
+  details: string | null; outletId: string; userId: string
+  createdAt: string
+  user?: { id: string; name: string; email: string } | null
+  outlet?: { id: string; name: string } | null
 }
 
 export interface OutletSetting {

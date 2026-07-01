@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getOutletAuditContext, getSystemAuditContext } from '@/lib/audit'
 
 // GET /api/admin/outlets/[id] — Get outlet detail
 export async function GET(
@@ -12,7 +13,10 @@ export async function GET(
       where: { id },
       include: {
         users: {
-          select: { id: true, name: true, email: true, role: true, createdAt: true },
+          select: {
+            id: true, name: true, email: true, role: true, createdAt: true,
+            crewPermission: { select: { pages: true } },
+          },
           orderBy: { role: 'desc' },
         },
         group: { select: { id: true, name: true } },
@@ -23,7 +27,15 @@ export async function GET(
       return NextResponse.json({ error: 'Outlet not found' }, { status: 404 })
     }
 
-    return NextResponse.json(outlet)
+    return NextResponse.json({
+      ...outlet,
+      users: outlet.users.map(u => ({
+        ...u,
+        active: u.role === 'OWNER'
+          ? !outlet.accountType.startsWith('suspended:')
+          : u.crewPermission ? u.crewPermission.pages !== '' : true,
+      })),
+    })
   } catch (error) {
     console.error('[GET /api/admin/outlets/[id]]', error)
     return NextResponse.json({ error: 'Failed to fetch outlet' }, { status: 500 })
@@ -66,16 +78,19 @@ export async function PUT(
     })
 
     // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'UPDATE_OUTLET',
-        entityType: 'OUTLET',
-        entityId: id,
-        outletId: id,
-        details: JSON.stringify({ updatedFields: Object.keys(data), values: data }),
-        performedBy: 'webmaster',
-      },
-    })
+    const auditCtx = await getOutletAuditContext(id)
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'UPDATE_OUTLET',
+          entityType: 'OUTLET',
+          entityId: id,
+          outletId: id,
+          userId: auditCtx.userId,
+          details: JSON.stringify({ updatedFields: Object.keys(data), values: data }),
+        },
+      })
+    }
 
     return NextResponse.json({ outlet: updatedOutlet })
   } catch (error) {
@@ -109,19 +124,25 @@ export async function DELETE(
       )
     }
 
+    // Store outlet data for audit log before deletion
+    const outletData = { name: outlet.name, accountType: outlet.accountType }
+
     await db.outlet.delete({ where: { id } })
 
-    // Audit log
-    await db.auditLog.create({
-      data: {
-        action: 'DELETE_OUTLET',
-        entityType: 'OUTLET',
-        entityId: id,
-        outletId: id,
-        details: JSON.stringify({ name: outlet.name, accountType: outlet.accountType }),
-        performedBy: 'webmaster',
-      },
-    })
+    // Audit log — after deletion, use system context
+    const auditCtx = await getSystemAuditContext()
+    if (auditCtx) {
+      await db.auditLog.create({
+        data: {
+          action: 'DELETE_OUTLET',
+          entityType: 'OUTLET',
+          entityId: id,
+          outletId: auditCtx.outletId,
+          userId: auditCtx.userId,
+          details: JSON.stringify(outletData),
+        },
+      })
+    }
 
     return NextResponse.json({ success: true, message: 'Outlet deleted successfully' })
   } catch (error) {

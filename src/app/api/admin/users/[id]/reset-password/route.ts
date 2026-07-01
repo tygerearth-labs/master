@@ -30,7 +30,7 @@ export async function PUT(
       data: { password: hashedPassword },
     })
 
-    // Log the action with new AuditLog structure
+    // Audit log — use the user's own id and outletId
     await db.auditLog.create({
       data: {
         action: 'RESET_PASSWORD',
@@ -39,7 +39,6 @@ export async function PUT(
         userId: id,
         outletId: user.outletId,
         details: JSON.stringify({ userEmail: user.email }),
-        performedBy: 'webmaster',
       },
     })
 
