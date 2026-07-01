@@ -1,5 +1,5 @@
-// ==================== AETHERPOS COMMAND CENTER — PRISMA SCHEMA ====================
-// Production schema for PostgreSQL (Neon)
+// ==================== AETHERPOS COMMAND CENTER — PRISMA SCHEMA (PostgreSQL/Neon) ====================
+// Adapted from AetherPOS for PostgreSQL (Web Master Admin Panel)
 
 generator client {
   provider = "prisma-client-js"
@@ -34,7 +34,7 @@ model OutletGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner     User       @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User       @relation("GroupOwner", fields: [ownerId], references: [id])
   outlets   Outlet[]
 }
 
@@ -51,7 +51,7 @@ model Outlet {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  group         OutletGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  group         OutletGroup?  @relation(fields: [groupId], references: [id])
   users         User[]
 }
 
@@ -62,11 +62,12 @@ model User {
   email     String
   password  String
   role      String   @default("CREW")
+  active    Boolean  @default(true)
   outletId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  outlet       Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  outlet       Outlet       @relation(fields: [outletId], references: [id])
   ownedGroup   OutletGroup? @relation("GroupOwner")
 
   @@unique([email, outletId])

@@ -11,29 +11,7 @@ export async function PUT(
     const body = await request.json()
     const { days, expiresAt, applyToGroup } = body
 
-    // Calculate new expiry date
-    let newExpiresAt: Date | null = null
-
-    if (expiresAt) {
-      // Explicit date provided
-      newExpiresAt = new Date(expiresAt)
-    } else if (days && days > 0) {
-      // Duration in days from now
-      const outlet = await db.outlet.findUnique({ where: { id } })
-      const startDate = outlet?.planExpiresAt && new Date(outlet.planExpiresAt) > new Date()
-        ? new Date(outlet.planExpiresAt)
-        : new Date()
-      newExpiresAt = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000)
-    } else if (days === 0 || days === null) {
-      // Set to null = no expiry (lifetime/free)
-      newExpiresAt = null
-    } else {
-      return NextResponse.json(
-        { error: 'Provide either "days" (number) or "expiresAt" (ISO date string)' },
-        { status: 400 }
-      )
-    }
-
+    // Fetch outlet once with all relations needed
     const outlet = await db.outlet.findUnique({
       where: { id },
       include: { group: { include: { outlets: true } } },
@@ -43,17 +21,50 @@ export async function PUT(
       return NextResponse.json({ error: 'Outlet not found' }, { status: 404 })
     }
 
+    // Calculate new expiry date
+    let newExpiresAt: Date | null = null
+
+    if (expiresAt) {
+      // Explicit date provided — validate it
+      const parsed = new Date(expiresAt)
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid date format for "expiresAt"' },
+          { status: 400 }
+        )
+      }
+      newExpiresAt = parsed
+    } else if (typeof days === 'number' && days > 0) {
+      // Duration in days — add to current expiry (or now if expired/null)
+      const startDate = outlet.planExpiresAt && new Date(outlet.planExpiresAt) > new Date()
+        ? new Date(outlet.planExpiresAt)
+        : new Date()
+      newExpiresAt = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000)
+    } else if (days === 0 || days === null || days === undefined) {
+      // 0 / null / undefined = no expiry (lifetime/free)
+      newExpiresAt = null
+    } else {
+      return NextResponse.json(
+        { error: 'Provide either "days" (positive number) or "expiresAt" (ISO date string), or "days": 0 for no expiry' },
+        { status: 400 }
+      )
+    }
+
     const oldExpiresAt = outlet.planExpiresAt
     const updatedOutlets: string[] = []
 
+    // Use transaction for group updates to prevent partial writes
     if (applyToGroup && outlet.groupId && outlet.group) {
-      for (const groupOutlet of outlet.group.outlets) {
-        await db.outlet.update({
-          where: { id: groupOutlet.id },
-          data: { planExpiresAt: newExpiresAt },
-        })
-        updatedOutlets.push(groupOutlet.id)
-      }
+      const outletIds = outlet.group.outlets.map(o => o.id)
+      await db.$transaction(
+        outletIds.map(oid =>
+          db.outlet.update({
+            where: { id: oid },
+            data: { planExpiresAt: newExpiresAt },
+          })
+        )
+      )
+      updatedOutlets.push(...outletIds)
     } else {
       await db.outlet.update({
         where: { id },

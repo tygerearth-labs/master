@@ -33,8 +33,7 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           users: {
-            where: { role: 'OWNER' },
-            select: { id: true, name: true, email: true, role: true, createdAt: true },
+            select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
           },
           group: { select: { id: true, name: true } },
         },

@@ -11,7 +11,7 @@ import { getOriginalPlan } from '@/lib/plan-config'
 
 import type { Outlet, User, Plan, Stats, AuditLog, NavPage } from '@/components/admin/types'
 import { EmptyState, DashboardPage, OutletsPage, UsersPage, PlansPage, AuditPage } from '@/components/admin/pages'
-import { PlanChangeDialog, DurationChangeDialog, ResetPasswordDialog, SuspendOwnerDialog, OutletDetailDialog, PlanFormDialog, DeletePlanDialog, type PlanFormData } from '@/components/admin/dialogs'
+import { PlanChangeDialog, DurationChangeDialog, ResetPasswordDialog, SuspendUserDialog, ChangeOwnerDialog, OutletDetailDialog, PlanFormDialog, DeletePlanDialog, type PlanFormData } from '@/components/admin/dialogs'
 
 // ===================== HELPERS =====================
 function formatDate(dateStr: string | null | undefined): string {
@@ -54,6 +54,8 @@ export default function AdminDashboard() {
   const [durationDialogOutlet, setDurationDialogOutlet] = useState<Outlet | null>(null)
   const [resetPwUser, setResetPwUser] = useState<User | null>(null)
   const [suspendUser, setSuspendUser] = useState<User | null>(null)
+  const [changeOwnerOutlet, setChangeOwnerOutlet] = useState<Outlet | null>(null)
+  const [selectedNewOwnerId, setSelectedNewOwnerId] = useState<string>('')
   const [detailOutlet, setDetailOutlet] = useState<Outlet | null>(null)
   const [planEditDialog, setPlanEditDialog] = useState<Plan | null>(null)
   const [planCreateDialog, setPlanCreateDialog] = useState(false)
@@ -163,10 +165,18 @@ export default function AdminDashboard() {
     setActionLoading(true)
     try {
       let days: number | null = null; let expiresAt: string | null = null
-      if (selectedDuration === 'custom_date') expiresAt = customExpiryDate
-      else if (selectedDuration === '0') days = 0
-      else if (selectedDuration === '-1') days = parseInt(customDays) || 0
-      else days = parseInt(selectedDuration)
+      if (selectedDuration === 'custom_date') {
+        if (!customExpiryDate) { toast({ title: 'Error', description: 'Please select an expiry date', variant: 'destructive' }); setActionLoading(false); return }
+        expiresAt = customExpiryDate
+      } else if (selectedDuration === '0') {
+        days = 0
+      } else if (selectedDuration === '-1') {
+        const parsed = parseInt(customDays)
+        if (!parsed || parsed <= 0) { toast({ title: 'Error', description: 'Custom duration must be at least 1 day', variant: 'destructive' }); setActionLoading(false); return }
+        days = parsed
+      } else {
+        days = parseInt(selectedDuration)
+      }
       const res = await fetch(`/api/admin/outlets/${durationDialogOutlet.id}/duration`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ days, expiresAt, applyToGroup }),
@@ -199,10 +209,25 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`/api/admin/users/${suspendUser.id}/suspend`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ suspend, suspendGroup }),
+        body: JSON.stringify({ suspend, suspendGroup: suspendUser.role === 'OWNER' ? suspendGroup : false }),
       })
       const data = await res.json()
-      if (res.ok) { toast({ title: suspend ? 'Suspended' : 'Unsuspended', description: `${suspendUser.name} (${suspendUser.email})` }); setSuspendUser(null); loadAll() }
+      if (res.ok) { toast({ title: suspend ? 'Suspended' : 'Unsuspended', description: `${suspendUser.name} (${suspendUser.email})` }); setSuspendUser(null); setSuspendGroup(false); loadAll() }
+      else toast({ title: 'Failed', description: data.error, variant: 'destructive' })
+    } catch { toast({ title: 'Error', variant: 'destructive' }) }
+    setActionLoading(false)
+  }
+
+  const handleChangeOwner = async () => {
+    if (!changeOwnerOutlet || !selectedNewOwnerId) return
+    setActionLoading(true)
+    try {
+      const res = await fetch(`/api/admin/outlets/${changeOwnerOutlet.id}/change-owner`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerId: selectedNewOwnerId }),
+      })
+      const data = await res.json()
+      if (res.ok) { toast({ title: 'Owner Changed', description: `${changeOwnerOutlet.name}: ${data.previousOwner?.name || 'None'} → ${data.newOwner.name}` }); setChangeOwnerOutlet(null); setSelectedNewOwnerId(''); loadAll() }
       else toast({ title: 'Failed', description: data.error, variant: 'destructive' })
     } catch { toast({ title: 'Error', variant: 'destructive' }) }
     setActionLoading(false)
@@ -368,11 +393,13 @@ export default function AdminDashboard() {
               {page === 'outlets' && (
                 <OutletsPage
                   outlets={outlets} total={outletTotal} page={outletPage} search={searchOutlet}
-                  filterPlan={filterPlan} onSearch={(v) => { setSearchOutlet(v); setOutletPage(1) }}
+                  filterPlan={filterPlan} plans={plans}
+                  onSearch={(v) => { setSearchOutlet(v); setOutletPage(1) }}
                   onFilter={(v) => { setFilterPlan(v); setOutletPage(1) }}
                   onPageChange={setOutletPage}
                   onPlanChange={(o) => { setPlanDialogOutlet(o); setSelectedPlan(getOriginalPlan(o.accountType)); setApplyToGroup(!!o.groupId) }}
                   onDurationChange={(o) => { setDurationDialogOutlet(o); setSelectedDuration('30'); setCustomDays(''); setCustomExpiryDate(''); setApplyToGroup(!!o.groupId) }}
+                  onChangeOwner={(o) => { setChangeOwnerOutlet(o); setSelectedNewOwnerId('') }}
                   onViewDetail={setDetailOutlet}
                 />
               )}
@@ -426,12 +453,17 @@ export default function AdminDashboard() {
         onPasswordChange={setNewPassword} onConfirm={handleResetPassword}
         onCancel={() => { setResetPwUser(null); setNewPassword('') }} loading={actionLoading}
       />
-      <SuspendOwnerDialog
+      <SuspendUserDialog
         user={suspendUser} suspendGroup={suspendGroup}
         onSuspendGroup={setSuspendGroup} onConfirm={handleSuspend}
-        onCancel={() => setSuspendUser(null)} loading={actionLoading}
+        onCancel={() => { setSuspendUser(null); setSuspendGroup(false) }} loading={actionLoading}
       />
-      <OutletDetailDialog outlet={detailOutlet} onClose={() => setDetailOutlet(null)} />
+      <ChangeOwnerDialog
+        outlet={changeOwnerOutlet} selectedNewOwnerId={selectedNewOwnerId}
+        onNewOwnerChange={setSelectedNewOwnerId} onConfirm={handleChangeOwner}
+        onCancel={() => { setChangeOwnerOutlet(null); setSelectedNewOwnerId('') }} loading={actionLoading}
+      />
+      <OutletDetailDialog outlet={detailOutlet} plans={plans} onClose={() => setDetailOutlet(null)} />
 
       {/* Plan Edit/Create Dialog */}
       <PlanFormDialog

@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
         name: u.name,
         email: u.email,
         role: u.role,
+        active: u.active,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
         outlet: u.outlet,

@@ -5,7 +5,7 @@ import {
   Store, Users, UserCheck, Building2, Ban, AlertTriangle,
   Search, ChevronLeft, ChevronRight, Clock, Shield, Eye,
   KeyRound, Loader2, Plus, Pencil, Trash2, Check, X,
-  ExternalLink, TrendingUp, DollarSign, Calendar, Save, XCircle
+  ExternalLink, TrendingUp, DollarSign, Calendar, Save, XCircle, ArrowRightLeft
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -273,10 +273,10 @@ export function DashboardPage({ stats, outlets }: { stats: Stats | null; outlets
 }
 
 // ===================== OUTLETS PAGE =====================
-export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch, onFilter, onPageChange, onPlanChange, onDurationChange, onViewDetail }: {
-  outlets: Outlet[]; total: number; page: number; search: string; filterPlan: string
+export function OutletsPage({ outlets, total, page, search, filterPlan, plans, onSearch, onFilter, onPageChange, onPlanChange, onDurationChange, onChangeOwner, onViewDetail }: {
+  outlets: Outlet[]; total: number; page: number; search: string; filterPlan: string; plans: Plan[]
   onSearch: (v: string) => void; onFilter: (v: string) => void; onPageChange: (p: number) => void
-  onPlanChange: (o: Outlet) => void; onDurationChange: (o: Outlet) => void; onViewDetail: (o: Outlet) => void
+  onPlanChange: (o: Outlet) => void; onDurationChange: (o: Outlet) => void; onChangeOwner: (o: Outlet) => void; onViewDetail: (o: Outlet) => void
 }) {
   return (
     <div className="space-y-4">
@@ -310,6 +310,7 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch
                   <th className="text-left py-2.5 px-4 font-medium text-muted-foreground">Outlet</th>
                   <th className="text-left py-2.5 px-4 font-medium text-muted-foreground">Owner</th>
                   <th className="text-center py-2.5 px-4 font-medium text-muted-foreground">Plan</th>
+                  <th className="text-right py-2.5 px-4 font-medium text-muted-foreground">Revenue/mo</th>
                   <th className="text-center py-2.5 px-4 font-medium text-muted-foreground">Expiry</th>
                   <th className="text-center py-2.5 px-4 font-medium text-muted-foreground">Status</th>
                   <th className="text-right py-2.5 px-4 font-medium text-muted-foreground">Actions</th>
@@ -317,12 +318,14 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch
               </thead>
               <tbody>
                 {outlets.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-12 text-muted-foreground">No outlets found</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">No outlets found</td></tr>
                 )}
                 {outlets.map((outlet) => {
                   const owner = outlet.users.find(u => u.role === 'OWNER')
                   const suspended = isSuspended(outlet.accountType)
                   const days = getDaysRemaining(outlet.planExpiresAt)
+                  const basePlan = suspended ? outlet.accountType.replace('suspended:', '') : outlet.accountType
+                  const planPrice = plans.find(p => p.slug === basePlan)?.price ?? 0
                   return (
                     <tr key={outlet.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${suspended ? 'opacity-50' : ''}`}>
                       <td className="py-2.5 px-4">
@@ -339,6 +342,9 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch
                       <td className="py-2.5 px-4 text-center">
                         <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono border ${getPlanBadgeClasses(outlet.accountType)}`}>{getPlanLabel(outlet.accountType)}</span>
                       </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <span className="font-mono text-xs font-medium text-emerald-400">{planPrice > 0 ? formatPrice(planPrice) : '—'}</span>
+                      </td>
                       <td className="py-2.5 px-4 text-center">{getExpiryBadge(outlet.planExpiresAt, outlet.accountType)}</td>
                       <td className="py-2.5 px-4 text-center">
                         {suspended ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
@@ -350,6 +356,7 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch
                         <div className="flex items-center justify-end gap-0.5">
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Change Plan" onClick={() => onPlanChange(outlet)}><Shield className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Change Duration" onClick={() => onDurationChange(outlet)}><Clock className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Change Owner" onClick={() => onChangeOwner(outlet)}><ArrowRightLeft className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Details" onClick={() => onViewDetail(outlet)}><Eye className="h-3.5 w-3.5" /></Button>
                         </div>
                       </td>
@@ -373,6 +380,8 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch
           const owner = outlet.users.find(u => u.role === 'OWNER')
           const suspended = isSuspended(outlet.accountType)
           const days = getDaysRemaining(outlet.planExpiresAt)
+          const basePlan = suspended ? outlet.accountType.replace('suspended:', '') : outlet.accountType
+          const planPrice = plans.find(p => p.slug === basePlan)?.price ?? 0
           return (
             <Card key={outlet.id} className={`bg-card border-white/[0.06] ${suspended ? 'opacity-50' : ''}`}>
               <CardContent className="p-4 space-y-3">
@@ -390,6 +399,7 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {owner && <div><p className="text-[10px] text-muted-foreground font-mono">Owner</p><p className="font-medium truncate">{owner.name}</p></div>}
+                  <div><p className="text-[10px] text-muted-foreground font-mono">Revenue/mo</p><p className="font-mono font-medium text-emerald-400">{planPrice > 0 ? formatPrice(planPrice) : '—'}</p></div>
                   <div><p className="text-[10px] text-muted-foreground font-mono">Expiry</p><div className="mt-0.5">{getExpiryBadge(outlet.planExpiresAt, outlet.accountType) || <span className="text-[10px]">—</span>}</div></div>
                   <div><p className="text-[10px] text-muted-foreground font-mono">Status</p><div className="mt-0.5">
                     {suspended ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
@@ -400,6 +410,7 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, onSearch
                 <div className="flex items-center gap-1 pt-1 border-t border-white/[0.06]">
                   <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onPlanChange(outlet)}><Shield className="h-3 w-3" /> Plan</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onDurationChange(outlet)}><Clock className="h-3 w-3" /> Duration</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onChangeOwner(outlet)}><ArrowRightLeft className="h-3 w-3" /> Owner</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onViewDetail(outlet)}><Eye className="h-3 w-3" /> Detail</Button>
                 </div>
               </CardContent>
@@ -454,7 +465,7 @@ export function UsersPage({ users, total, page, search, onSearch, onPageChange, 
                 {users.map((user) => {
                   const suspended = isSuspended(user.outlet.accountType)
                   return (
-                    <tr key={user.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${suspended && user.role === 'OWNER' ? 'opacity-50' : ''}`}>
+                    <tr key={user.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${(!user.active || (suspended && user.role === 'OWNER')) ? 'opacity-50' : ''}`}>
                       <td className="py-2.5 px-4">
                         <p className="font-medium">{user.name}</p>
                         <p className="text-[10px] text-muted-foreground font-mono">{user.email}</p>
@@ -469,18 +480,17 @@ export function UsersPage({ users, total, page, search, onSearch, onPageChange, 
                         <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono border ${getPlanBadgeClasses(user.outlet.accountType)}`}>{getPlanLabel(user.outlet.accountType)}</span>
                       </td>
                       <td className="py-2.5 px-4 text-center">
-                        {suspended ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
+                        {!user.active ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
+                          : suspended ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
                           : <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-mono">ACTIVE</Badge>
                         }
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-0.5">
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Reset Password" onClick={() => onResetPw(user)}><KeyRound className="h-3.5 w-3.5" /></Button>
-                          {user.role === 'OWNER' && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title={suspended ? 'Unsuspend' : 'Suspend'} onClick={() => onSuspend(user)}>
-                              {suspended ? <UserCheck className="h-3.5 w-3.5 text-emerald-400" /> : <Ban className="h-3.5 w-3.5 text-red-400" />}
-                            </Button>
-                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title={!user.active || suspended ? 'Unsuspend' : 'Suspend'} onClick={() => onSuspend(user)}>
+                            {!user.active || suspended ? <UserCheck className="h-3.5 w-3.5 text-emerald-400" /> : <Ban className="h-3.5 w-3.5 text-red-400" />}
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -500,7 +510,7 @@ export function UsersPage({ users, total, page, search, onSearch, onPageChange, 
         {users.map((user) => {
           const suspended = isSuspended(user.outlet.accountType)
           return (
-            <Card key={user.id} className={`bg-card border-white/[0.06] ${suspended && user.role === 'OWNER' ? 'opacity-50' : ''}`}>
+            <Card key={user.id} className={`bg-card border-white/[0.06] ${(!user.active || (suspended && user.role === 'OWNER')) ? 'opacity-50' : ''}`}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -509,7 +519,8 @@ export function UsersPage({ users, total, page, search, onSearch, onPageChange, 
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Badge variant={user.role === 'OWNER' ? 'default' : 'secondary'} className={`text-[9px] font-mono ${user.role === 'OWNER' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : ''}`}>{user.role}</Badge>
-                    {suspended ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
+                    {!user.active ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
+                      : suspended ? <Badge variant="destructive" className="text-[9px] font-mono">SUSPENDED</Badge>
                       : <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-mono">ACTIVE</Badge>}
                   </div>
                 </div>
@@ -521,11 +532,9 @@ export function UsersPage({ users, total, page, search, onSearch, onPageChange, 
                 </div>
                 <div className="flex items-center gap-1 pt-1 border-t border-white/[0.06]">
                   <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onResetPw(user)}><KeyRound className="h-3 w-3" /> Reset PW</Button>
-                  {user.role === 'OWNER' && (
-                    <Button variant="ghost" size="sm" className={`h-7 text-[11px] gap-1.5 ${suspended ? 'text-emerald-400' : 'text-red-400'}`} onClick={() => onSuspend(user)}>
-                      {suspended ? <><UserCheck className="h-3 w-3" /> Unsuspend</> : <><Ban className="h-3 w-3" /> Suspend</>}
-                    </Button>
-                  )}
+                  <Button variant="ghost" size="sm" className={`h-7 text-[11px] gap-1.5 ${!user.active || suspended ? 'text-emerald-400' : 'text-red-400'}`} onClick={() => onSuspend(user)}>
+                    {!user.active || suspended ? <><UserCheck className="h-3 w-3" /> Unsuspend</> : <><Ban className="h-3 w-3" /> Suspend</>}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

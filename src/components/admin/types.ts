@@ -1,7 +1,7 @@
 // ===================== SHARED TYPES ====================
 
 export interface OutletOwner {
-  id: string; name: string; email: string; role: string; createdAt: string
+  id: string; name: string; email: string; role: string; active: boolean; createdAt: string
 }
 
 export interface Outlet {
@@ -12,7 +12,7 @@ export interface Outlet {
 }
 
 export interface User {
-  id: string; name: string; email: string; role: string
+  id: string; name: string; email: string; role: string; active: boolean
   createdAt: string; updatedAt: string
   outlet: { id: string; name: string; accountType: string; planExpiresAt: string | null }
 }

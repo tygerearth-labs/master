@@ -1,8 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
-  Shield, CalendarDays, KeyRound, UserCheck, Ban, Loader2, Save
+  Shield, CalendarDays, KeyRound, UserCheck, Ban, Loader2, Save, ArrowRightLeft, DollarSign
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,13 +27,17 @@ import {
   getPlanLabel, getPlanBadgeClasses, isSuspended,
   formatLimit, PLANS
 } from '@/lib/plan-config'
-import type { Outlet, User, Plan } from '@/components/admin/types'
+import type { Outlet, User, Plan, OutletOwner } from '@/components/admin/types'
 import { DetailField } from '@/components/admin/shared'
 
 // ===================== HELPERS (local) =====================
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount)
 }
 
 // ===================== PLAN CHANGE DIALOG =====================
@@ -169,26 +173,36 @@ export function ResetPasswordDialog({ user, newPassword, onPasswordChange, onCon
   )
 }
 
-// ===================== SUSPEND OWNER DIALOG =====================
-export function SuspendOwnerDialog({ user, suspendGroup, onSuspendGroup, onConfirm, onCancel, loading }: {
+// ===================== SUSPEND USER DIALOG (supports both OWNER and CREW) =====================
+export function SuspendUserDialog({ user, suspendGroup, onSuspendGroup, onConfirm, onCancel, loading }: {
   user: User | null; suspendGroup: boolean; onSuspendGroup: (v: boolean) => void
   onConfirm: (suspend: boolean) => void; onCancel: () => void; loading: boolean
 }) {
   if (!user) return null
-  const suspended = isSuspended(user.outlet.accountType)
+
+  const isOwner = user.role === 'OWNER'
+  const outletSuspended = isOwner && isSuspended(user.outlet.accountType)
+  const userSuspended = !user.active
+  const isCurrentlySuspended = isOwner ? outletSuspended : userSuspended
+
   return (
     <AlertDialog open={!!user} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent className="bg-card border-white/[0.06]">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-base flex items-center gap-2">
-            {suspended ? <><UserCheck className="h-4 w-4 text-emerald-400" /> Unsuspend Owner</> : <><Ban className="h-4 w-4 text-red-400" /> Suspend Owner</>}
+            {isCurrentlySuspended
+              ? <><UserCheck className="h-4 w-4 text-emerald-400" /> Unsuspend {isOwner ? 'Owner' : 'User'}</>
+              : <><Ban className="h-4 w-4 text-red-400" /> Suspend {isOwner ? 'Owner' : 'User'}</>
+            }
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {suspended ? <>Restore <strong>{user?.name}</strong>&apos;s outlet. The owner and crew will be able to log in again.</>
-              : <>Suspend <strong>{user?.name}</strong>&apos;s outlet. The owner and all crew will be locked out.</>}
+            {isCurrentlySuspended
+              ? <>Restore <strong>{user.name}</strong>&apos;s access. {isOwner ? 'The outlet and all crew will be able to log in again.' : 'They will be able to log in again.'}</>
+              : <>Suspend <strong>{user.name}</strong>. {isOwner ? 'The outlet will be suspended and all crew will be locked out.' : 'They will not be able to log in until unsuspended.'}</>
+            }
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {!suspended && (
+        {isOwner && !isCurrentlySuspended && (
           <div className="flex items-center gap-2">
             <Switch checked={suspendGroup} onCheckedChange={onSuspendGroup} id="suspend-group" />
             <Label htmlFor="suspend-group" className="text-xs">Suspend all outlets in group</Label>
@@ -196,12 +210,72 @@ export function SuspendOwnerDialog({ user, suspendGroup, onSuspendGroup, onConfi
         )}
         <AlertDialogFooter>
           <AlertDialogCancel className="text-xs">Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onConfirm(!suspended)} disabled={loading} className={`${!suspended ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'bg-emerald-600 hover:bg-emerald-700 text-white'} text-xs`}>
-            {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}{suspended ? 'Unsuspend' : 'Suspend'}
+          <AlertDialogAction
+            onClick={(e) => { e.preventDefault(); onConfirm(!isCurrentlySuspended) }}
+            disabled={loading}
+            className={`${!isCurrentlySuspended ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'bg-emerald-600 hover:bg-emerald-700 text-white'} text-xs`}
+          >
+            {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}{isCurrentlySuspended ? 'Unsuspend' : 'Suspend'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  )
+}
+
+// ===================== CHANGE OWNER DIALOG =====================
+export function ChangeOwnerDialog({ outlet, selectedNewOwnerId, onNewOwnerChange, onConfirm, onCancel, loading }: {
+  outlet: Outlet | null; selectedNewOwnerId: string; onNewOwnerChange: (v: string) => void
+  onConfirm: () => void; onCancel: () => void; loading: boolean
+}) {
+  const currentOwner = outlet?.users.find(u => u.role === 'OWNER')
+  const candidates = outlet?.users.filter(u => u.role !== 'OWNER' && u.active) || []
+
+  return (
+    <Dialog open={!!outlet} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="sm:max-w-md bg-card border-white/[0.06]">
+        <DialogHeader>
+          <DialogTitle className="text-base flex items-center gap-2"><ArrowRightLeft className="h-4 w-4 text-cyan-400" /> Change Owner</DialogTitle>
+          <DialogDescription>
+            Transfer ownership of <strong>{outlet?.name}</strong>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="p-3 rounded-md bg-white/[0.03] border border-white/[0.06]">
+            <p className="text-[10px] text-muted-foreground font-mono mb-1">Current Owner</p>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-mono">OWNER</Badge>
+              <p className="text-sm font-medium">{currentOwner?.name || '—'}</p>
+              <p className="text-[10px] text-muted-foreground font-mono">{currentOwner?.email}</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">New Owner (must be a crew in this outlet)</Label>
+            {candidates.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">No crew members available. Add a crew user to this outlet first.</p>
+            ) : (
+              <Select value={selectedNewOwnerId} onValueChange={onNewOwnerChange}>
+                <SelectTrigger className="bg-white/[0.04] border-white/[0.08]"><SelectValue placeholder="Select new owner..." /></SelectTrigger>
+                <SelectContent>
+                  {candidates.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      <span className="flex items-center gap-2">{u.name} <span className="text-[10px] text-muted-foreground font-mono">{u.email}</span></span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground">Current owner will be demoted to CREW. The new owner will gain full control of this outlet.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onCancel} className="text-xs">Cancel</Button>
+          <Button onClick={onConfirm} disabled={loading || !selectedNewOwnerId || candidates.length === 0} className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs">
+            {loading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}Transfer Ownership
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -301,37 +375,49 @@ export function DeletePlanDialog({ plan, onConfirm, onCancel, loading }: {
 }
 
 // ===================== OUTLET DETAIL DIALOG =====================
-export function OutletDetailDialog({ outlet, onClose }: { outlet: Outlet | null; onClose: () => void }) {
+export function OutletDetailDialog({ outlet, plans, onClose }: { outlet: Outlet | null; plans: Plan[]; onClose: () => void }) {
+  if (!outlet) return null
+
+  const basePlan = isSuspended(outlet.accountType) ? outlet.accountType.replace('suspended:', '') : outlet.accountType
+  const planPrice = plans.find(p => p.slug === basePlan)?.price ?? 0
+
   return (
     <Dialog open={!!outlet} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg bg-card border-white/[0.06]">
         <DialogHeader><DialogTitle className="text-base">Outlet Details</DialogTitle></DialogHeader>
-        {outlet && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <DetailField label="Name" value={outlet.name} />
-              <DetailField label="Plan" value={getPlanLabel(outlet.accountType)} />
-              <DetailField label="Address" value={outlet.address || '—'} />
-              <DetailField label="Phone" value={outlet.phone || '—'} />
-              <DetailField label="Main Outlet" value={outlet.isMain ? 'Yes' : 'No'} />
-              <DetailField label="Group" value={outlet.group?.name || 'Standalone'} />
-              <DetailField label="Plan Expires" value={outlet.planExpiresAt ? formatDate(outlet.planExpiresAt) : 'No Expiry'} />
-              <DetailField label="Created" value={formatDate(outlet.createdAt)} />
-            </div>
-            <Separator className="bg-white/[0.06]" />
-            <div>
-              <h4 className="text-xs font-medium mb-2">Users ({outlet.users.length})</h4>
-              <div className="space-y-1.5">
-                {outlet.users.map(u => (
-                  <div key={u.id} className="flex items-center justify-between p-2 rounded-md bg-white/[0.03]">
-                    <div><p className="text-xs font-medium">{u.name}</p><p className="text-[10px] text-muted-foreground font-mono">{u.email}</p></div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <DetailField label="Name" value={outlet.name} />
+            <DetailField label="Plan" value={getPlanLabel(outlet.accountType)} />
+            <DetailField label="Address" value={outlet.address || '—'} />
+            <DetailField label="Phone" value={outlet.phone || '—'} />
+            <DetailField label="Main Outlet" value={outlet.isMain ? 'Yes' : 'No'} />
+            <DetailField label="Group" value={outlet.group?.name || 'Standalone'} />
+            <DetailField label="Plan Expires" value={outlet.planExpiresAt ? formatDate(outlet.planExpiresAt) : 'No Expiry'} />
+            <DetailField label="Revenue/mo" value={planPrice > 0 ? formatPrice(planPrice) : 'Free'} />
+            <DetailField label="Created" value={formatDate(outlet.createdAt)} />
+          </div>
+          <Separator className="bg-white/[0.06]" />
+          <div>
+            <h4 className="text-xs font-medium mb-2">Users ({outlet.users.length})</h4>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {outlet.users.map(u => (
+                <div key={u.id} className="flex items-center justify-between p-2 rounded-md bg-white/[0.03]">
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="text-xs font-medium">{u.name}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">{u.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {!u.active && <Badge variant="destructive" className="text-[8px] font-mono px-1">SUSPENDED</Badge>}
                     <Badge variant={u.role === 'OWNER' ? 'default' : 'secondary'} className={`text-[9px] font-mono ${u.role === 'OWNER' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : ''}`}>{u.role}</Badge>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   )
