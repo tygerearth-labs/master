@@ -1,6 +1,7 @@
 /**
  * plan-config.ts — Plan Feature Matrix & Constants
- * Adapted from AetherPOS for the Command Center admin panel.
+ * Compatible with original AetherPOS schema.
+ * Plan.duration is in MONTHS (1 = per bulan, 12 = per tahun).
  */
 
 export type AccountType = 'free' | 'pro' | 'enterprise'
@@ -40,14 +41,13 @@ export function getPlanBadgeClasses(accountType: string): string {
   }
 }
 
+// Duration options in MONTHS (matching original AetherPOS Plan.duration)
 export const PLAN_DURATIONS = [
-  { label: '7 Days', days: 7 },
-  { label: '14 Days', days: 14 },
-  { label: '30 Days (1 Month)', days: 30 },
-  { label: '90 Days (3 Months)', days: 90 },
-  { label: '180 Days (6 Months)', days: 180 },
-  { label: '365 Days (1 Year)', days: 365 },
-  { label: 'Custom', days: -1 },
+  { label: '1 Month', months: 1 },
+  { label: '3 Months', months: 3 },
+  { label: '6 Months', months: 6 },
+  { label: '12 Months (1 Year)', months: 12 },
+  { label: 'Custom', months: -1 },
 ] as const
 
 export interface PlanFeatures {
@@ -191,3 +191,25 @@ export function formatPrice(price: number): string {
   if (price === 0) return 'Free'
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price)
 }
+
+// Crew permission pages (matching original AetherPOS)
+export const CREW_PAGES = [
+  { key: 'pos', label: 'POS Terminal' },
+  { key: 'products', label: 'Products' },
+  { key: 'transactions', label: 'Transactions' },
+  { key: 'customers', label: 'Customers' },
+  { key: 'reports', label: 'Reports' },
+  { key: 'promos', label: 'Promos' },
+  { key: 'settings', label: 'Settings' },
+] as const
+
+export type CrewPageKey = typeof CREW_PAGES[number]['key']
+
+// Theme color options for outlet settings
+export const THEME_COLORS = [
+  { key: 'emerald', label: 'Emerald', class: 'bg-emerald-500' },
+  { key: 'blue', label: 'Blue', class: 'bg-blue-500' },
+  { key: 'violet', label: 'Violet', class: 'bg-violet-500' },
+  { key: 'rose', label: 'Rose', class: 'bg-rose-500' },
+  { key: 'amber', label: 'Amber', class: 'bg-amber-500' },
+] as const

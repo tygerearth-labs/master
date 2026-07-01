@@ -58,13 +58,15 @@ export async function PUT(
       updatedOutlets.push(id)
     }
 
-    // Log the action
+    // Log the action with new AuditLog structure
     await db.auditLog.create({
       data: {
         action: 'CHANGE_PLAN',
-        targetId: id,
-        targetType: 'outlet',
+        entityType: 'OUTLET',
+        entityId: id,
+        outletId: id,
         details: JSON.stringify({ oldType, newType: accountType, applyToGroup: !!applyToGroup, updatedOutlets }),
+        performedBy: 'webmaster',
       },
     })
 

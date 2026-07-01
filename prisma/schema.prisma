@@ -1,5 +1,6 @@
 // ==================== AETHERPOS COMMAND CENTER — PRISMA SCHEMA (PostgreSQL/Neon) ====================
-// Adapted from AetherPOS for PostgreSQL (Web Master Admin Panel)
+// Fully compatible with original AetherPOS schema
+// PostgreSQL for Vercel / production deployment
 
 generator client {
   provider = "prisma-client-js"
@@ -13,15 +14,15 @@ datasource db {
 // ==================== PLAN (Editable Pricing) ====================
 model Plan {
   id          String   @id @default(cuid())
-  name        String                        // "Free", "Pro", "Enterprise"
-  slug        String   @unique              // "free", "pro", "enterprise"
-  price       Float    @default(0)          // Monthly price in IDR
-  duration    Int      @default(30)         // Duration in days
-  paymentLink String?                       // Payment URL
-  features    String   @default("{}")       // JSON string of feature limits
-  active      Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  description String?
+  name        String                        // Display name: "Free", "Pro", "Enterprise"
+  slug        String   @unique               // URL-safe key: "free", "pro", "enterprise"
+  price       Float    @default(0)           // Price in IDR (0 = free)
+  duration    Int      @default(1)           // Duration in MONTHS (1 = per bulan, 12 = per tahun)
+  paymentLink String?                       // External payment URL for upgrade
+  features    String   @default("{}")       // JSON: feature key-value pairs (booleans & numbers)
+  active      Boolean  @default(true)       // Show/enable this plan
+  sortOrder   Int      @default(0)          // Display order (lower = first)
+  description String?                       // Short tagline
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -29,8 +30,8 @@ model Plan {
 // ==================== OUTLET GROUP (Multi-Outlet) ====================
 model OutletGroup {
   id        String   @id @default(cuid())
-  name      String
-  ownerId   String   @unique
+  name      String                        // Business name: "RNB"
+  ownerId   String   @unique              // Main account owner (User id)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -44,15 +45,18 @@ model Outlet {
   name          String
   address       String?
   phone         String?
-  accountType   String    @default("free")
-  isMain        Boolean   @default(false)
-  groupId       String?
-  planExpiresAt DateTime?
+  accountType   String    @default("free") // free, pro, enterprise
+  isMain        Boolean   @default(false)  // Main/headquarters outlet in the group
+  groupId       String?                     // Belongs to an outlet group (null = standalone)
+  planExpiresAt DateTime?                   // When the current paid plan expires (null = free/never expires)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  group         OutletGroup?  @relation(fields: [groupId], references: [id])
-  users         User[]
+  group            OutletGroup?       @relation(fields: [groupId], references: [id])
+  users            User[]
+  setting          OutletSetting?
+  auditLogs        AuditLog[]
+  crewPermissions  CrewPermission[]
 }
 
 // ==================== USER ====================
@@ -61,25 +65,97 @@ model User {
   name      String
   email     String
   password  String
-  role      String   @default("CREW")
-  active    Boolean  @default(true)
+  role      String   @default("CREW") // OWNER or CREW
+  active    Boolean  @default(true)   // Command Center specific — for suspend
   outletId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  outlet       Outlet       @relation(fields: [outletId], references: [id])
-  ownedGroup   OutletGroup? @relation("GroupOwner")
+  outlet          Outlet           @relation(fields: [outletId], references: [id])
+  ownedGroup      OutletGroup?     @relation("GroupOwner")
+  auditLogs       AuditLog[]
+  crewPermission  CrewPermission?
 
   @@unique([email, outletId])
 }
 
 // ==================== AUDIT LOG ====================
+// Compatible with original AetherPOS AuditLog + admin-specific fields
 model AuditLog {
   id          String   @id @default(cuid())
-  action      String
-  targetId    String
-  targetType  String
-  details     String?
-  performedBy String   @default("webmaster")
+  action      String               // CREATE, UPDATE, DELETE, CHANGE_PLAN, SUSPEND_OWNER, etc.
+  entityType  String               // OUTLET, USER, PLAN, SETTINGS, STOCK, TRANSACTION
+  entityId    String?              // ID of the referenced entity (any type)
+  details     String?              // JSON string with change details
+  outletId    String?              // Optional — admin actions may not target specific outlet
+  userId      String?              // Optional — admin actions use performedBy instead
+  performedBy String   @default("webmaster") // Command Center specific — who performed
   createdAt   DateTime @default(now())
+
+  outlet  Outlet?  @relation(fields: [outletId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+}
+
+// ==================== OUTLET SETTING ====================
+model OutletSetting {
+  id       String @id @default(cuid())
+  outletId String @unique
+
+  // Payment methods
+  paymentMethods String @default("CASH,QRIS")
+
+  // Loyalty program config
+  loyaltyEnabled          Boolean @default(true)
+  loyaltyPointsPerAmount  Int     @default(10000)
+  loyaltyPointValue       Int     @default(100)
+
+  // Receipt config
+  receiptBusinessName String @default("Aether POS")
+  receiptAddress      String @default("")
+  receiptPhone        String @default("")
+  receiptFooter       String @default("Terima kasih atas kunjungan Anda!")
+  receiptLogo         String @default("")
+
+  // PPN / Tax
+  ppnEnabled      Boolean @default(false)
+  ppnRate         Float   @default(11)
+
+  // Manual discount
+  manualDiscountEnabled Boolean @default(false)
+
+  // Double receipt
+  receiptDoublePrintEnabled  Boolean @default(false)
+  receiptMerchantCopyEnabled Boolean @default(true)
+  receiptCustomerCopyEnabled Boolean @default(true)
+  receiptBatchOrderEnabled   Boolean @default(false)
+
+  // Theme
+  themePrimaryColor String @default("emerald")
+
+  // Telegram
+  telegramBotToken      String?
+  telegramChatId        String?
+  notifyOnTransaction   Boolean @default(true)
+  notifyOnCustomer      Boolean @default(true)
+  notifyDailyReport     Boolean @default(true)
+  notifyWeeklyReport    Boolean @default(false)
+  notifyMonthlyReport   Boolean @default(true)
+  notifyOnInsight       Boolean @default(true)
+
+  outlet    Outlet   @relation(fields: [outletId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== CREW PERMISSION ====================
+model CrewPermission {
+  id       String @id @default(cuid())
+  userId   String @unique
+  pages    String @default("pos") // Comma-separated allowed pages
+  outletId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  outlet Outlet @relation(fields: [outletId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

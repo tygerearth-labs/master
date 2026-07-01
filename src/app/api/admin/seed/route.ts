@@ -114,7 +114,7 @@ export async function POST() {
       },
     })
 
-    await db.user.create({
+    const crew1 = await db.user.create({
       data: {
         name: 'Siti Aminah',
         email: 'siti@kopikenangan.com',
@@ -124,7 +124,7 @@ export async function POST() {
       },
     })
 
-    await db.user.create({
+    const crew2 = await db.user.create({
       data: {
         name: 'Dewi Lestari',
         email: 'dewi@kopikenangan.com',
@@ -144,7 +144,7 @@ export async function POST() {
       },
     })
 
-    await db.user.create({
+    const crew3 = await db.user.create({
       data: {
         name: 'Ahmad Fauzi',
         email: 'ahmad@miegacoan.com',
@@ -174,7 +174,7 @@ export async function POST() {
       },
     })
 
-    await db.user.create({
+    const crew4 = await db.user.create({
       data: {
         name: 'Rina Puspita',
         email: 'rina@baksopak.com',
@@ -204,7 +204,7 @@ export async function POST() {
       },
     })
 
-    await db.user.create({
+    const crew5 = await db.user.create({
       data: {
         name: 'Maya Sari',
         email: 'maya@nasipadang.com',
@@ -244,6 +244,7 @@ export async function POST() {
     })
 
     // Step 5: Seed default plans (Free / Pro / Enterprise)
+    // Duration is in MONTHS (1 = per bulan)
     const existingPlans = await db.plan.count()
     let plansSeeded = 0
     if (existingPlans === 0) {
@@ -253,7 +254,7 @@ export async function POST() {
             name: 'Free',
             slug: 'free',
             price: 0,
-            duration: 30,
+            duration: 1,
             features: JSON.stringify(PLANS.free),
             active: true,
             sortOrder: 0,
@@ -262,7 +263,7 @@ export async function POST() {
             name: 'Pro',
             slug: 'pro',
             price: 149000,
-            duration: 30,
+            duration: 1,
             features: JSON.stringify(PLANS.pro),
             active: true,
             sortOrder: 1,
@@ -271,7 +272,7 @@ export async function POST() {
             name: 'Enterprise',
             slug: 'enterprise',
             price: 499000,
-            duration: 30,
+            duration: 1,
             features: JSON.stringify(PLANS.enterprise),
             active: true,
             sortOrder: 2,
@@ -281,6 +282,46 @@ export async function POST() {
       plansSeeded = 3
     }
 
+    // Step 6: Seed OutletSetting for the first outlet (Kopi Kenangan HQ)
+    await db.outletSetting.create({
+      data: {
+        outletId: outlet1.id,
+        paymentMethods: 'CASH,QRIS,TRANSFER',
+        loyaltyEnabled: true,
+        loyaltyPointsPerAmount: 10000,
+        loyaltyPointValue: 100,
+        receiptBusinessName: 'Kopi Kenangan',
+        receiptAddress: 'Jl. Sudirman No. 1, Jakarta',
+        receiptPhone: '021-1234567',
+        receiptFooter: 'Terima kasih atas kunjungan Anda!',
+        ppnEnabled: true,
+        ppnRate: 11,
+        manualDiscountEnabled: true,
+        receiptDoublePrintEnabled: true,
+        receiptMerchantCopyEnabled: true,
+        receiptCustomerCopyEnabled: true,
+        receiptBatchOrderEnabled: false,
+        themePrimaryColor: 'emerald',
+        notifyOnTransaction: true,
+        notifyOnCustomer: true,
+        notifyDailyReport: true,
+        notifyWeeklyReport: false,
+        notifyMonthlyReport: true,
+        notifyOnInsight: true,
+      },
+    })
+
+    // Step 7: Seed CrewPermissions for crew users
+    await db.crewPermission.createMany({
+      data: [
+        { userId: crew1.id, outletId: outlet1.id, pages: 'pos,products,transactions' },
+        { userId: crew2.id, outletId: outlet2.id, pages: 'pos,products,transactions' },
+        { userId: crew3.id, outletId: outlet3.id, pages: 'pos,products,transactions' },
+        { userId: crew4.id, outletId: outlet5.id, pages: 'pos,products,transactions' },
+        { userId: crew5.id, outletId: outlet7.id, pages: 'pos,products,transactions' },
+      ],
+    })
+
     return NextResponse.json({
       success: true,
       message: 'Demo data seeded successfully',
@@ -288,6 +329,8 @@ export async function POST() {
       users: 12,
       groups: 1,
       plans: plansSeeded,
+      outletSettings: 1,
+      crewPermissions: 5,
     })
   } catch (error) {
     console.error('[POST /api/admin/seed]', error)

@@ -9,12 +9,14 @@ export interface Outlet {
   accountType: string; isMain: boolean; groupId: string | null
   planExpiresAt: string | null; createdAt: string; updatedAt: string
   users: OutletOwner[]; group?: { id: string; name: string } | null
+  setting?: OutletSetting | null
 }
 
 export interface User {
   id: string; name: string; email: string; role: string; active: boolean
   createdAt: string; updatedAt: string
   outlet: { id: string; name: string; accountType: string; planExpiresAt: string | null }
+  crewPermission?: CrewPermissionData | null
 }
 
 export interface Plan {
@@ -33,12 +35,69 @@ export interface Stats {
   planBreakdown: Record<string, number>
   totalMRR: number; totalARR: number
   planRevenue: Record<string, PlanRevenueEntry>
+  totalProducts: number; totalCustomers: number; totalTransactions: number
+  outletsWithSettings: number
   recentOutlets: { id: string; name: string; accountType: string; planExpiresAt: string | null; createdAt: string; owner: { id: string; name: string; email: string } | null }[]
 }
 
 export interface AuditLog {
-  id: string; action: string; targetId: string; targetType: string
-  details: string | null; performedBy: string; createdAt: string
+  id: string; action: string; entityType: string; entityId: string | null
+  details: string | null; outletId: string | null; userId: string | null
+  performedBy: string; createdAt: string
 }
 
-export type NavPage = 'dashboard' | 'outlets' | 'users' | 'plans' | 'audit'
+export interface OutletSetting {
+  id: string; outletId: string
+  paymentMethods: string
+  loyaltyEnabled: boolean; loyaltyPointsPerAmount: number; loyaltyPointValue: number
+  receiptBusinessName: string; receiptAddress: string; receiptPhone: string
+  receiptFooter: string; receiptLogo: string
+  ppnEnabled: boolean; ppnRate: number
+  manualDiscountEnabled: boolean
+  receiptDoublePrintEnabled: boolean; receiptMerchantCopyEnabled: boolean
+  receiptCustomerCopyEnabled: boolean; receiptBatchOrderEnabled: boolean
+  themePrimaryColor: string
+  telegramBotToken: string | null; telegramChatId: string | null
+  notifyOnTransaction: boolean; notifyOnCustomer: boolean
+  notifyDailyReport: boolean; notifyWeeklyReport: boolean
+  notifyMonthlyReport: boolean; notifyOnInsight: boolean
+  createdAt: string; updatedAt: string
+}
+
+export interface CrewPermissionData {
+  id: string; userId: string; pages: string; outletId: string
+  createdAt: string; updatedAt: string
+}
+
+export interface OutletGroup {
+  id: string; name: string; ownerId: string; createdAt: string; updatedAt: string
+  owner?: { id: string; name: string; email: string } | null
+  outlets?: { id: string; name: string; accountType: string }[]
+}
+
+export type NavPage = 'dashboard' | 'outlets' | 'users' | 'plans' | 'audit' | 'groups'
+
+// Form data types
+export interface OutletFormData {
+  name: string; address: string; phone: string; accountType: string; isMain: boolean; groupId: string
+}
+
+export interface UserFormData {
+  name: string; email: string; password: string; role: string; outletId: string
+}
+
+export interface SettingFormData {
+  paymentMethods: string
+  loyaltyEnabled: boolean; loyaltyPointsPerAmount: number; loyaltyPointValue: number
+  receiptBusinessName: string; receiptAddress: string; receiptPhone: string
+  receiptFooter: string; receiptLogo: string
+  ppnEnabled: boolean; ppnRate: number
+  manualDiscountEnabled: boolean
+  receiptDoublePrintEnabled: boolean; receiptMerchantCopyEnabled: boolean
+  receiptCustomerCopyEnabled: boolean; receiptBatchOrderEnabled: boolean
+  themePrimaryColor: string
+  telegramBotToken: string; telegramChatId: string
+  notifyOnTransaction: boolean; notifyOnCustomer: boolean
+  notifyDailyReport: boolean; notifyWeeklyReport: boolean
+  notifyMonthlyReport: boolean; notifyOnInsight: boolean
+}

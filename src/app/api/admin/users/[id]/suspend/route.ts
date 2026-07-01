@@ -29,9 +29,12 @@ export async function PUT(
         await db.auditLog.create({
           data: {
             action: 'SUSPEND_USER',
-            targetId: id,
-            targetType: 'user',
-            details: JSON.stringify({ userId: id, userName: user.name, userEmail: user.email, role: user.role }),
+            entityType: 'USER',
+            entityId: id,
+            userId: id,
+            outletId: user.outlet.id,
+            details: JSON.stringify({ userName: user.name, userEmail: user.email, role: user.role }),
+            performedBy: 'webmaster',
           },
         })
         return NextResponse.json({ success: true, action: 'suspended', userId: id })
@@ -40,9 +43,12 @@ export async function PUT(
         await db.auditLog.create({
           data: {
             action: 'UNSUSPEND_USER',
-            targetId: id,
-            targetType: 'user',
-            details: JSON.stringify({ userId: id, userName: user.name, userEmail: user.email, role: user.role }),
+            entityType: 'USER',
+            entityId: id,
+            userId: id,
+            outletId: user.outlet.id,
+            details: JSON.stringify({ userName: user.name, userEmail: user.email, role: user.role }),
+            performedBy: 'webmaster',
           },
         })
         return NextResponse.json({ success: true, action: 'unsuspended', userId: id })
@@ -87,13 +93,17 @@ export async function PUT(
       await db.auditLog.create({
         data: {
           action: 'SUSPEND_OWNER',
-          targetId: id,
-          targetType: 'user',
+          entityType: 'USER',
+          entityId: id,
+          userId: id,
+          outletId: outlet.id,
           details: JSON.stringify({
-            userId: id, userEmail: user.email,
-            outletId: outlet.id, previousAccountType: outlet.accountType,
-            suspendGroup: !!suspendGroup, updatedOutlets,
+            userEmail: user.email,
+            previousAccountType: outlet.accountType,
+            suspendGroup: !!suspendGroup,
+            updatedOutlets,
           }),
+          performedBy: 'webmaster',
         },
       })
 
@@ -129,13 +139,17 @@ export async function PUT(
       await db.auditLog.create({
         data: {
           action: 'UNSUSPEND_OWNER',
-          targetId: id,
-          targetType: 'user',
+          entityType: 'USER',
+          entityId: id,
+          userId: id,
+          outletId: outlet.id,
           details: JSON.stringify({
-            userId: id, userEmail: user.email,
-            outletId: outlet.id, restoredAccountType: originalType,
-            suspendGroup: !!suspendGroup, updatedOutlets,
+            userEmail: user.email,
+            restoredAccountType: originalType,
+            suspendGroup: !!suspendGroup,
+            updatedOutlets,
           }),
+          performedBy: 'webmaster',
         },
       })
 

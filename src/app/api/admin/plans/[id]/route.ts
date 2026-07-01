@@ -64,6 +64,17 @@ export async function PUT(
       data,
     })
 
+    // Audit log
+    await db.auditLog.create({
+      data: {
+        action: 'UPDATE_PLAN',
+        entityType: 'PLAN',
+        entityId: id,
+        details: JSON.stringify({ updatedFields: Object.keys(data), values: data }),
+        performedBy: 'webmaster',
+      },
+    })
+
     return NextResponse.json({ plan })
   } catch (error) {
     console.error('[PUT /api/admin/plans/[id]]', error)
@@ -86,6 +97,17 @@ export async function DELETE(
     }
 
     await db.plan.delete({ where: { id } })
+
+    // Audit log
+    await db.auditLog.create({
+      data: {
+        action: 'DELETE_PLAN',
+        entityType: 'PLAN',
+        entityId: id,
+        details: JSON.stringify({ name: existing.name, slug: existing.slug }),
+        performedBy: 'webmaster',
+      },
+    })
 
     return NextResponse.json({ success: true, message: 'Plan deleted successfully' })
   } catch (error) {

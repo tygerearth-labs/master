@@ -55,3 +55,51 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch outlets' }, { status: 500 })
   }
 }
+
+// POST /api/admin/outlets — Create a new outlet
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { name, address, phone, accountType, isMain, groupId } = body
+
+    if (!name) {
+      return NextResponse.json({ error: 'Outlet name is required' }, { status: 400 })
+    }
+
+    // If groupId provided, verify group exists
+    if (groupId) {
+      const group = await db.outletGroup.findUnique({ where: { id: groupId } })
+      if (!group) {
+        return NextResponse.json({ error: 'Outlet group not found' }, { status: 404 })
+      }
+    }
+
+    const outlet = await db.outlet.create({
+      data: {
+        name,
+        address: address || null,
+        phone: phone || null,
+        accountType: accountType || 'free',
+        isMain: isMain ?? false,
+        groupId: groupId || null,
+      },
+    })
+
+    // Audit log
+    await db.auditLog.create({
+      data: {
+        action: 'CREATE_OUTLET',
+        entityType: 'OUTLET',
+        entityId: outlet.id,
+        outletId: outlet.id,
+        details: JSON.stringify({ name: outlet.name, accountType: outlet.accountType, isMain: outlet.isMain, groupId: outlet.groupId }),
+        performedBy: 'webmaster',
+      },
+    })
+
+    return NextResponse.json({ outlet }, { status: 201 })
+  } catch (error) {
+    console.error('[POST /api/admin/outlets]', error)
+    return NextResponse.json({ error: 'Failed to create outlet' }, { status: 500 })
+  }
+}

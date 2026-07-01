@@ -42,12 +42,23 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         price: price ?? 0,
-        duration: duration ?? 30,
+        duration: duration ?? 1,
         paymentLink: paymentLink ?? null,
         features: features ?? '{}',
         active: active ?? true,
         sortOrder: sortOrder ?? 0,
         description: description ?? null,
+      },
+    })
+
+    // Audit log
+    await db.auditLog.create({
+      data: {
+        action: 'CREATE_PLAN',
+        entityType: 'PLAN',
+        entityId: plan.id,
+        details: JSON.stringify({ name: plan.name, slug: plan.slug, price: plan.price }),
+        performedBy: 'webmaster',
       },
     })
 

@@ -13,6 +13,7 @@ export async function GET() {
       recentOutlets,
       expiringOutlets,
       plans,
+      outletsWithSettings,
     ] = await Promise.all([
       db.outlet.count(),
       db.user.count(),
@@ -37,6 +38,8 @@ export async function GET() {
       }),
       // Fetch all plans for revenue calculation
       db.plan.findMany({ orderBy: { sortOrder: 'asc' } }),
+      // Count outlets that have an OutletSetting
+      db.outletSetting.count(),
     ])
 
     const planBreakdown: Record<string, number> = {}
@@ -96,6 +99,11 @@ export async function GET() {
         createdAt: o.createdAt,
         owner: o.users[0] ? { id: o.users[0].id, name: o.users[0].name, email: o.users[0].email } : null,
       })),
+      // Additional stats
+      totalProducts: 0,       // No Product model yet
+      totalCustomers: 0,      // No Customer model yet
+      totalTransactions: 0,   // No Transaction model yet
+      outletsWithSettings,
     })
   } catch (error) {
     console.error('[GET /api/admin/stats]', error)

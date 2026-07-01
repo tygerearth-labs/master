@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 // PUT /api/admin/outlets/[id]/duration — Change plan duration/expiry
+// Supports both `days` and `months` fields. If `months` provided, converts to days: days = months * 30
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -9,7 +10,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { days, expiresAt, applyToGroup } = body
+    let { days, months, expiresAt, applyToGroup } = body
 
     // Fetch outlet once with all relations needed
     const outlet = await db.outlet.findUnique({
@@ -19,6 +20,13 @@ export async function PUT(
 
     if (!outlet) {
       return NextResponse.json({ error: 'Outlet not found' }, { status: 404 })
+    }
+
+    // Convert months to days if provided (backward compat: also accept days directly)
+    if (typeof months === 'number' && months > 0) {
+      days = months * 30
+    } else if (typeof months === 'number' && months === 0) {
+      days = 0
     }
 
     // Calculate new expiry date
@@ -45,7 +53,7 @@ export async function PUT(
       newExpiresAt = null
     } else {
       return NextResponse.json(
-        { error: 'Provide either "days" (positive number) or "expiresAt" (ISO date string), or "days": 0 for no expiry' },
+        { error: 'Provide either "days" or "months" (positive number), "expiresAt" (ISO date string), or "days": 0 for no expiry' },
         { status: 400 }
       )
     }
@@ -73,19 +81,22 @@ export async function PUT(
       updatedOutlets.push(id)
     }
 
-    // Log the action
+    // Log the action with new AuditLog structure
     await db.auditLog.create({
       data: {
         action: 'CHANGE_DURATION',
-        targetId: id,
-        targetType: 'outlet',
+        entityType: 'OUTLET',
+        entityId: id,
+        outletId: id,
         details: JSON.stringify({
           oldExpiresAt,
           newExpiresAt,
           days,
+          months: months ?? null,
           applyToGroup: !!applyToGroup,
           updatedOutlets,
         }),
+        performedBy: 'webmaster',
       },
     })
 

@@ -66,18 +66,19 @@ export async function PUT(
 
     await db.$transaction(updates)
 
-    // Log the action
+    // Log the action with new AuditLog structure
     await db.auditLog.create({
       data: {
         action: 'CHANGE_OWNER',
-        targetId: id,
-        targetType: 'outlet',
+        entityType: 'OUTLET',
+        entityId: id,
+        outletId: id,
         details: JSON.stringify({
-          outletId: id,
           outletName: outlet.name,
           previousOwner: currentOwner ? { id: currentOwner.id, name: currentOwner.name, email: currentOwner.email } : null,
           newOwner: { id: newOwner.id, name: newOwner.name, email: newOwner.email },
         }),
+        performedBy: 'webmaster',
       },
     })
 

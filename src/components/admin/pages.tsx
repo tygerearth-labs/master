@@ -5,7 +5,8 @@ import {
   Store, Users, UserCheck, Building2, Ban, AlertTriangle,
   Search, ChevronLeft, ChevronRight, Clock, Shield, Eye,
   KeyRound, Loader2, Plus, Pencil, Trash2, Check, X,
-  ExternalLink, TrendingUp, DollarSign, Calendar, Save, XCircle, ArrowRightLeft
+  ExternalLink, TrendingUp, DollarSign, Calendar, Save, ArrowRightLeft,
+  Settings2, Package, Receipt, ShoppingCart, Layers, Lock, Trash
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,13 +16,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Switch } from '@/components/ui/switch'
 import {
   VALID_ACCOUNT_TYPES, FEATURE_ROWS,
   getPlanLabel, getPlanBadgeClasses, isSuspended,
   formatLimit, formatPrice, PLANS, type AccountType, type PlanFeatures
 } from '@/lib/plan-config'
-import type { Outlet, User as TUser, Plan, Stats, AuditLog } from '@/components/admin/types'
+import type { Outlet, User as TUser, Plan, Stats, AuditLog, OutletGroup } from '@/components/admin/types'
 import { StatCard } from '@/components/admin/shared'
 
 // ===================== HELPERS (local) =====================
@@ -60,6 +60,32 @@ function parseFeatures(featuresJson: string): Partial<PlanFeatures> {
   }
 }
 
+// Action badge color for audit log
+function getActionBadgeClasses(action: string): string {
+  if (action.includes('SUSPEND')) return 'bg-red-500/10 border-red-500/20 text-red-400'
+  if (action.includes('UNSUSPEND')) return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+  if (action.includes('RESET')) return 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+  if (action.includes('CHANGE_PLAN')) return 'bg-violet-500/10 border-violet-500/20 text-violet-400'
+  if (action.includes('CHANGE_DURATION')) return 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+  if (action.includes('CREATE')) return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+  if (action.includes('DELETE')) return 'bg-red-500/10 border-red-500/20 text-red-400'
+  if (action.includes('UPDATE')) return 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+  return 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
+}
+
+// Entity type badge color
+function getEntityTypeBadgeClasses(entityType: string): string {
+  switch (entityType.toUpperCase()) {
+    case 'OUTLET': return 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+    case 'USER': return 'bg-violet-500/10 border-violet-500/20 text-violet-400'
+    case 'PLAN': return 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+    case 'GROUP': return 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+    case 'SETTING': return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+    case 'PERMISSION': return 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+    default: return 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
+  }
+}
+
 // ===================== EMPTY STATE =====================
 export function EmptyState({ onSeed, loading }: { onSeed: () => void; loading: boolean }) {
   return (
@@ -90,14 +116,18 @@ export function DashboardPage({ stats, outlets }: { stats: Stats | null; outlets
 
   return (
     <div className="space-y-5">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Stats Grid — 2 cols mobile, 3 sm, 4 lg */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <StatCard icon={<Store className="h-4 w-4" />} label="Outlets" value={stats.totalOutlets} color="text-emerald-400" bg="bg-emerald-500/10" />
         <StatCard icon={<Users className="h-4 w-4" />} label="Users" value={stats.totalUsers} color="text-blue-400" bg="bg-blue-500/10" />
         <StatCard icon={<UserCheck className="h-4 w-4" />} label="Owners" value={stats.totalOwners} color="text-violet-400" bg="bg-violet-500/10" />
         <StatCard icon={<Building2 className="h-4 w-4" />} label="Groups" value={stats.totalGroups} color="text-cyan-400" bg="bg-cyan-500/10" />
         <StatCard icon={<Ban className="h-4 w-4" />} label="Suspended" value={stats.suspendedOutlets} color="text-red-400" bg="bg-red-500/10" />
         <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Expiring" value={stats.expiringOutlets} color="text-orange-400" bg="bg-orange-500/10" />
+        <StatCard icon={<Package className="h-4 w-4" />} label="Total Products" value={stats.totalProducts} color="text-teal-400" bg="bg-teal-500/10" />
+        <StatCard icon={<Receipt className="h-4 w-4" />} label="Total Customers" value={stats.totalCustomers} color="text-pink-400" bg="bg-pink-500/10" />
+        <StatCard icon={<ShoppingCart className="h-4 w-4" />} label="Transactions" value={stats.totalTransactions} color="text-yellow-400" bg="bg-yellow-500/10" />
+        <StatCard icon={<Layers className="h-4 w-4" />} label="With Settings" value={stats.outletsWithSettings} color="text-indigo-400" bg="bg-indigo-500/10" />
       </div>
 
       {/* Revenue Section */}
@@ -210,7 +240,7 @@ export function DashboardPage({ stats, outlets }: { stats: Stats | null; outlets
         </Card>
       </div>
 
-      {/* Recent Outlets + Expiring */}
+      {/* Recent Outlets + Feature Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card className="bg-card border-white/[0.06]">
           <CardHeader className="pb-3">
@@ -273,14 +303,15 @@ export function DashboardPage({ stats, outlets }: { stats: Stats | null; outlets
 }
 
 // ===================== OUTLETS PAGE =====================
-export function OutletsPage({ outlets, total, page, search, filterPlan, plans, onSearch, onFilter, onPageChange, onPlanChange, onDurationChange, onChangeOwner, onViewDetail }: {
+export function OutletsPage({ outlets, total, page, search, filterPlan, plans, onSearch, onFilter, onPageChange, onPlanChange, onDurationChange, onChangeOwner, onViewDetail, onCreate, onEdit, onDelete, onEditSettings }: {
   outlets: Outlet[]; total: number; page: number; search: string; filterPlan: string; plans: Plan[]
   onSearch: (v: string) => void; onFilter: (v: string) => void; onPageChange: (p: number) => void
   onPlanChange: (o: Outlet) => void; onDurationChange: (o: Outlet) => void; onChangeOwner: (o: Outlet) => void; onViewDetail: (o: Outlet) => void
+  onCreate: () => void; onEdit: (outlet: Outlet) => void; onDelete: (outlet: Outlet) => void; onEditSettings: (outlet: Outlet) => void
 }) {
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Filters + Add Button */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -298,6 +329,9 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, plans, o
             <SelectItem value="suspended">Suspended</SelectItem>
           </SelectContent>
         </Select>
+        <Button onClick={onCreate} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-xs shrink-0">
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Outlet
+        </Button>
       </div>
 
       {/* Desktop Table */}
@@ -354,10 +388,13 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, plans, o
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit Outlet" onClick={() => onEdit(outlet)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Settings" onClick={() => onEditSettings(outlet)}><Settings2 className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Change Plan" onClick={() => onPlanChange(outlet)}><Shield className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Change Duration" onClick={() => onDurationChange(outlet)}><Clock className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Change Owner" onClick={() => onChangeOwner(outlet)}><ArrowRightLeft className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Details" onClick={() => onViewDetail(outlet)}><Eye className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" title="Delete Outlet" onClick={() => onDelete(outlet)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </td>
                     </tr>
@@ -407,11 +444,14 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, plans, o
                       : <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-mono">ACTIVE</Badge>}
                   </div></div>
                 </div>
-                <div className="flex items-center gap-1 pt-1 border-t border-white/[0.06]">
-                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onPlanChange(outlet)}><Shield className="h-3 w-3" /> Plan</Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onDurationChange(outlet)}><Clock className="h-3 w-3" /> Duration</Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onChangeOwner(outlet)}><ArrowRightLeft className="h-3 w-3" /> Owner</Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onViewDetail(outlet)}><Eye className="h-3 w-3" /> Detail</Button>
+                <div className="flex items-center gap-1 pt-1 border-t border-white/[0.06] flex-wrap">
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onEdit(outlet)}><Pencil className="h-3 w-3" /> Edit</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onEditSettings(outlet)}><Settings2 className="h-3 w-3" /> Settings</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onPlanChange(outlet)}><Shield className="h-3 w-3" /> Plan</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onDurationChange(outlet)}><Clock className="h-3 w-3" /> Duration</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onChangeOwner(outlet)}><ArrowRightLeft className="h-3 w-3" /> Owner</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onViewDetail(outlet)}><Eye className="h-3 w-3" /> Detail</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1 text-red-400 hover:text-red-300" onClick={() => onDelete(outlet)}><Trash2 className="h-3 w-3" /> Delete</Button>
                 </div>
               </CardContent>
             </Card>
@@ -433,16 +473,29 @@ export function OutletsPage({ outlets, total, page, search, filterPlan, plans, o
 }
 
 // ===================== USERS PAGE =====================
-export function UsersPage({ users, total, page, search, onSearch, onPageChange, onResetPw, onSuspend }: {
+export function UsersPage({ users, total, page, search, onSearch, onPageChange, onResetPw, onSuspend, onCreate, onEdit, onDelete, onManagePermissions, outlets }: {
   users: TUser[]; total: number; page: number; search: string
   onSearch: (v: string) => void; onPageChange: (p: number) => void
   onResetPw: (u: TUser) => void; onSuspend: (u: TUser) => void
+  onCreate: () => void; onEdit: (user: TUser) => void; onDelete: (user: TUser) => void
+  onManagePermissions: (user: TUser) => void; outlets: Outlet[]
 }) {
+  const getOutletName = (outletId: string) => {
+    const o = outlets.find(x => x.id === outletId)
+    return o?.name || '—'
+  }
+
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input placeholder="Search users..." className="pl-9 bg-white/[0.04] border-white/[0.08] text-sm h-9" value={search} onChange={(e) => onSearch(e.target.value)} />
+      {/* Search + Add Button */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Search users..." className="pl-9 bg-white/[0.04] border-white/[0.08] text-sm h-9" value={search} onChange={(e) => onSearch(e.target.value)} />
+        </div>
+        <Button onClick={onCreate} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-xs shrink-0">
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add User
+        </Button>
       </div>
 
       {/* Desktop Table */}
@@ -487,10 +540,15 @@ export function UsersPage({ users, total, page, search, onSearch, onPageChange, 
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit User" onClick={() => onEdit(user)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          {user.role === 'CREW' && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Manage Permissions" onClick={() => onManagePermissions(user)}><Lock className="h-3.5 w-3.5" /></Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Reset Password" onClick={() => onResetPw(user)}><KeyRound className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" title={!user.active || suspended ? 'Unsuspend' : 'Suspend'} onClick={() => onSuspend(user)}>
                             {!user.active || suspended ? <UserCheck className="h-3.5 w-3.5 text-emerald-400" /> : <Ban className="h-3.5 w-3.5 text-red-400" />}
                           </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" title="Delete User" onClick={() => onDelete(user)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </td>
                     </tr>
@@ -530,11 +588,16 @@ export function UsersPage({ users, total, page, search, onSearch, onPageChange, 
                     <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono border ${getPlanBadgeClasses(user.outlet.accountType)}`}>{getPlanLabel(user.outlet.accountType)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 pt-1 border-t border-white/[0.06]">
-                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1.5" onClick={() => onResetPw(user)}><KeyRound className="h-3 w-3" /> Reset PW</Button>
-                  <Button variant="ghost" size="sm" className={`h-7 text-[11px] gap-1.5 ${!user.active || suspended ? 'text-emerald-400' : 'text-red-400'}`} onClick={() => onSuspend(user)}>
+                <div className="flex items-center gap-1 pt-1 border-t border-white/[0.06] flex-wrap">
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onEdit(user)}><Pencil className="h-3 w-3" /> Edit</Button>
+                  {user.role === 'CREW' && (
+                    <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onManagePermissions(user)}><Lock className="h-3 w-3" /> Perms</Button>
+                  )}
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => onResetPw(user)}><KeyRound className="h-3 w-3" /> Reset PW</Button>
+                  <Button variant="ghost" size="sm" className={`h-7 text-[11px] gap-1 ${!user.active || suspended ? 'text-emerald-400' : 'text-red-400'}`} onClick={() => onSuspend(user)}>
                     {!user.active || suspended ? <><UserCheck className="h-3 w-3" /> Unsuspend</> : <><Ban className="h-3 w-3" /> Suspend</>}
                   </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1 text-red-400 hover:text-red-300" onClick={() => onDelete(user)}><Trash2 className="h-3 w-3" /> Delete</Button>
                 </div>
               </CardContent>
             </Card>
@@ -659,7 +722,7 @@ export function PlansPage({ plans, onEdit, onCreate, onDelete }: {
                 <div className="mt-2">
                   <p className="text-2xl font-bold font-mono">
                     {formatPrice(plan.price)}
-                    {plan.price > 0 && <span className="text-xs font-normal text-muted-foreground">/{plan.duration}d</span>}
+                    {plan.price > 0 && <span className="text-xs font-normal text-muted-foreground">/{plan.duration}mo</span>}
                   </p>
                   {plan.description && <p className="text-[10px] text-muted-foreground mt-1">{plan.description}</p>}
                 </div>
@@ -755,7 +818,7 @@ export function PlansPage({ plans, onEdit, onCreate, onDelete }: {
                             />
                           </div>
                         ) : type === 'boolean' ? (
-                          val ? <Check className={`h-3.5 w-3.5 mx-auto ${editMode ? 'text-emerald-400' : 'text-emerald-400'}`} /> 
+                          val ? <Check className="h-3.5 w-3.5 mx-auto text-emerald-400" />
                                : <X className={`h-3.5 w-3.5 mx-auto ${editMode ? 'text-zinc-500 hover:text-red-400' : 'text-zinc-600'}`} />
                         ) : (
                           <span className={val === -1 ? 'text-emerald-400' : ''}>
@@ -773,7 +836,7 @@ export function PlansPage({ plans, onEdit, onCreate, onDelete }: {
                 {localPlans.map(p => (
                   <td key={p.id} className="text-center py-2.5 px-2 sm:px-3 font-mono font-bold">
                     {formatPrice(p.price)}
-                    {p.price > 0 && <span className="text-[10px] font-normal text-muted-foreground">/{p.duration}d</span>}
+                    {p.price > 0 && <span className="text-[10px] font-normal text-muted-foreground">/{p.duration}mo</span>}
                   </td>
                 ))}
               </tr>
@@ -786,12 +849,50 @@ export function PlansPage({ plans, onEdit, onCreate, onDelete }: {
 }
 
 // ===================== AUDIT PAGE =====================
-export function AuditPage({ logs }: { logs: AuditLog[] }) {
+export function AuditPage({ logs, filterAction, filterEntityType, onFilterAction, onFilterEntityType }: {
+  logs: AuditLog[]
+  filterAction: string
+  filterEntityType: string
+  onFilterAction: (action: string) => void
+  onFilterEntityType: (entityType: string) => void
+}) {
+  // Collect unique actions and entity types from the logs
+  const uniqueActions = Array.from(new Set(logs.map(l => l.action))).sort()
+  const uniqueEntityTypes = Array.from(new Set(logs.map(l => l.entityType).filter(Boolean))).sort()
+
   return (
     <Card className="bg-card border-white/[0.06]">
       <CardHeader>
-        <CardTitle className="text-sm font-medium">Activity Log</CardTitle>
-        <CardDescription className="text-xs">Recent admin actions</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-sm font-medium">Activity Log</CardTitle>
+            <CardDescription className="text-xs">Recent admin actions</CardDescription>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={filterAction} onValueChange={onFilterAction}>
+              <SelectTrigger className="w-full sm:w-[160px] bg-white/[0.04] border-white/[0.08] h-8 text-xs">
+                <SelectValue placeholder="Filter Action" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Actions</SelectItem>
+                {uniqueActions.map(a => (
+                  <SelectItem key={a} value={a}>{a.replace(/_/g, ' ')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterEntityType} onValueChange={onFilterEntityType}>
+              <SelectTrigger className="w-full sm:w-[140px] bg-white/[0.04] border-white/[0.08] h-8 text-xs">
+                <SelectValue placeholder="Filter Entity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Entities</SelectItem>
+                {uniqueEntityTypes.map(e => (
+                  <SelectItem key={e} value={e}>{e}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {logs.length === 0 ? (
@@ -807,15 +908,43 @@ export function AuditPage({ logs }: { logs: AuditLog[] }) {
                     : log.action.includes('RESET') ? 'bg-amber-400'
                     : log.action.includes('CHANGE_PLAN') ? 'bg-violet-400'
                     : log.action.includes('CHANGE_DURATION') ? 'bg-cyan-400'
+                    : log.action.includes('CREATE') ? 'bg-emerald-400'
+                    : log.action.includes('DELETE') ? 'bg-red-400'
+                    : log.action.includes('UPDATE') ? 'bg-blue-400'
                     : 'bg-blue-400'
                   }`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium font-mono">{log.action.replace(/_/g, ' ')}</span>
-                      <Badge variant="outline" className="text-[9px] font-mono border-white/[0.1]">{log.targetType}</Badge>
+                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono border ${getActionBadgeClasses(log.action)}`}>
+                        {log.action.replace(/_/g, ' ')}
+                      </span>
+                      {log.entityType && (
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono border ${getEntityTypeBadgeClasses(log.entityType)}`}>
+                          {log.entityType}
+                        </span>
+                      )}
+                      {log.entityId && (
+                        <span className="text-[9px] text-muted-foreground font-mono truncate max-w-[120px]">{log.entityId}</span>
+                      )}
                     </div>
                     {log.details && <p className="text-[10px] text-muted-foreground mt-0.5 font-mono truncate">{log.details}</p>}
-                    <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">{formatDateTime(log.createdAt)} · {log.performedBy}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-[10px] text-muted-foreground font-mono">{formatDateTime(log.createdAt)}</span>
+                      <span className="text-[10px] text-muted-foreground">·</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">{log.performedBy}</span>
+                      {log.outletId && (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">·</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">Outlet: {log.outletId}</span>
+                        </>
+                      )}
+                      {log.userId && (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">·</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">User: {log.userId}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -824,5 +953,101 @@ export function AuditPage({ logs }: { logs: AuditLog[] }) {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+// ===================== GROUPS PAGE ====================
+export function GroupsPage({ groups, onCreate, onDelete }: {
+  groups: OutletGroup[]
+  onCreate: () => void
+  onDelete: (group: OutletGroup) => void
+}) {
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-4">
+      {/* Header + Create */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-medium">Outlet Groups</h3>
+          <p className="text-xs text-muted-foreground">Manage multi-outlet organizations</p>
+        </div>
+        <Button onClick={onCreate} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-xs shrink-0">
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Group
+        </Button>
+      </div>
+
+      {groups.length === 0 ? (
+        <Card className="bg-card border-white/[0.06]">
+          <CardContent className="py-16 text-center">
+            <div className="mx-auto h-12 w-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3">
+              <Building2 className="h-6 w-6 text-emerald-400" />
+            </div>
+            <p className="text-sm font-medium">No Groups Yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Create a group to manage multiple outlets together.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {groups.map((group) => {
+            const outletCount = group.outlets?.length ?? 0
+            const isConfirming = confirmDelete === group.id
+            return (
+              <Card key={group.id} className="bg-card border-white/[0.06] hover:border-white/[0.1] transition-colors">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-sm font-medium truncate">{group.name}</CardTitle>
+                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                        {group.owner?.name || 'Unknown Owner'}
+                        {group.owner?.email && <span className="text-muted-foreground/60"> · {group.owner.email}</span>}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      {isConfirming ? (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 text-[11px] text-red-400 hover:text-red-300" onClick={() => onDelete(group)}>
+                            <Trash className="h-3 w-3 mr-1" /> Confirm
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => setConfirmDelete(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" title="Delete Group" onClick={() => setConfirmDelete(group.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className="text-[9px] font-mono border-white/[0.1]">
+                      <Building2 className="h-3 w-3 mr-1" /> {outletCount} outlet{outletCount !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                  {group.outlets && group.outlets.length > 0 ? (
+                    <div className="space-y-1">
+                      {group.outlets.map((outlet) => (
+                        <div key={outlet.id} className="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/[0.03] transition-colors">
+                          <span className="text-xs truncate">{outlet.name}</span>
+                          <span className={`inline-flex items-center rounded px-1 py-0 text-[9px] font-mono border shrink-0 ${getPlanBadgeClasses(outlet.accountType)}`}>
+                            {getPlanLabel(outlet.accountType)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground">No outlets in this group</p>
+                  )}
+                  <p className="text-[9px] text-muted-foreground font-mono mt-3">Created {formatDate(group.createdAt)}</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
